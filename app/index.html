@@ -622,6 +622,31 @@ svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stro
 .chan .dotlive.live{background:var(--talk);box-shadow:0 0 0 4px rgba(47,191,113,.25)}
 .ptt .livetag{position:absolute;left:12px;top:6px;font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.06em;opacity:.9;display:none}
 .ptt.livemode .livetag{display:block}
+/* ======== SIGN-IN GATE ======== */
+.gate{position:absolute;inset:0;z-index:95;background:var(--bg);overflow-y:auto;display:none}
+.gate.on{display:block}
+.gate .gwrap{min-height:100%;display:flex;flex-direction:column;gap:14px;padding:44px 22px 28px;max-width:430px;margin:0 auto}
+.glogo{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:20px;color:var(--ink)}
+.glogo i{width:30px;height:30px;background:var(--accent);clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%);position:relative}
+.gate h1{margin:6px 0 2px;font-family:var(--display);font-size:30px;font-weight:700;line-height:1.1;letter-spacing:-.01em;color:var(--ink)}
+.gseg{margin:0}
+.gform{display:flex;flex-direction:column;gap:12px}
+.gform[hidden]{display:none}
+.gform .field input{font-family:var(--body)}
+#gOrg,#gCode{font-family:var(--mono)!important;letter-spacing:.04em}
+.gids{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}
+.gids span{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.06em}
+.gids b{display:block;font-family:var(--mono);font-size:16px;font-weight:600;color:var(--ink);margin-top:3px;word-break:break-all;user-select:text;-webkit-user-select:text}
+.gids.big{grid-template-columns:1fr}
+.gids.big b{font-size:19px}
+.gerr{margin:0;color:var(--sos);font-size:14px;font-weight:600;min-height:18px}
+.gnote{margin:auto 0 0;font-size:12.5px;color:var(--muted);line-height:1.45}
+.gate .linkbtn{align-self:flex-start;color:var(--muted);padding:0}
+.orgcard{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface2);display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.orgcard div span{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.06em}
+.orgcard div b{display:block;font-family:var(--mono);font-size:14px;color:var(--ink);margin-top:2px;word-break:break-all}
+.orgcard .wide{grid-column:1/-1}
+.orgcard .wide b{font-family:var(--display);font-size:18px;font-weight:700}
 /* ======== PRO: equipment-grade restraint ======== */
 .pro{--display:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif}
 .pro *{text-shadow:none!important}
@@ -954,7 +979,8 @@ svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stro
     <div class="opt"><button id="takBtn">TAK bridge<small id="takState">Off · CoT exchange</small></button><button id="pbBtn">Pack builder<small>clone and rename</small></button></div>
     <h4>LIVE VOICE · TWO DEVICES</h4>
     <div class="field"><label for="csIn">YOUR CALLSIGN ON THIS DEVICE</label><input id="csIn" maxlength="24" autocomplete="off"></div>
-    <div class="fgrid"><div class="field"><label for="teamIn">TEAM CODE · SAME ON EVERY DEVICE</label><input id="teamIn" maxlength="24" autocomplete="off" autocapitalize="off"></div><div class="field"><label>&nbsp;</label><button class="secondary" id="teamShare" style="height:46px;font-size:15px">Copy invite link</button></div></div>
+    <div class="orgcard" id="orgCard"></div>
+    <div class="opt"><button id="teamShare">Invite people<small>link + access code</small></button><button id="signOut">Sign out<small>leave this organization</small></button></div>
     <p class="note2" id="teamLine"></p>
     <p class="note2" id="liveState">Connecting…</p>
     <div class="opt" id="optSim"></div>
@@ -986,6 +1012,39 @@ svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stro
     <h3 id="tourH">Fieldlink</h3>
     <p id="tourP"></p>
     <div class="two"><button id="tourExit">Exit</button><button class="p" id="tourNext">Next</button></div>
+  </section>
+
+  <section class="gate" id="gate" aria-label="Sign in to your organization">
+    <div class="gwrap">
+      <div class="glogo"><i></i><span>Fieldlink</span></div>
+      <h1 id="gTitle">Sign in to your organization</h1>
+      <div class="seg gseg" role="tablist"><button class="on" id="gTabJoin" role="tab" aria-selected="true">Join</button><button id="gTabNew" role="tab" aria-selected="false">Create</button></div>
+      <form id="gJoin" class="gform" autocomplete="off">
+        <div class="field"><label for="gOrg">ORGANIZATION ID</label><input id="gOrg" placeholder="e.g. fl-7k2q-x9m4" autocapitalize="off" spellcheck="false" required></div>
+        <div class="field"><label for="gCode">ACCESS CODE</label><input id="gCode" placeholder="6 characters from your lead" autocapitalize="characters" spellcheck="false"></div>
+        <div class="field"><label for="gCs">YOUR CALLSIGN</label><input id="gCs" placeholder="e.g. Engine 12 · Hamza" maxlength="24" required></div>
+        <div class="field"><label>ROLE</label><div class="opt" id="gRole"></div></div>
+        <button class="primary hot" type="submit">Join organization</button>
+      </form>
+      <form id="gNew" class="gform" autocomplete="off" hidden>
+        <div class="field"><label for="nName">ORGANIZATION NAME</label><input id="nName" placeholder="e.g. Dubai Civil Defence · Station 4" maxlength="40" required></div>
+        <div class="field"><label>INDUSTRY PACK</label><div class="opt" id="nPack"></div></div>
+        <div class="field"><label for="nCs">YOUR CALLSIGN</label><input id="nCs" placeholder="e.g. IC Haddad" maxlength="24" required></div>
+        <div class="gids"><div><span>ORGANIZATION ID</span><b id="nId">fl-····-····</b></div><div><span>ACCESS CODE</span><b id="nCode">······</b></div><button type="button" class="linkbtn" id="nRegen">New ID</button></div>
+        <button class="primary hot" type="submit">Create and enter as lead</button>
+      </form>
+      <p class="gerr" id="gErr" role="alert"></p>
+      <button class="linkbtn" id="gSolo">Try the demo without an organization</button>
+      <p class="gnote">No accounts. Phones in the same organization connect directly to each other; the access code encrypts that connection. Anyone with both the ID and code can join, so share them only with your team.</p>
+    </div>
+  </section>
+
+  <section class="bs" id="inviteSheet" aria-label="Invite people">
+    <div class="hd"><h2>Invite people</h2><button class="iconbtn" data-act="closebs" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <p class="note2">Send the link. Give the access code separately (say it out loud, or a different message), so a forwarded link alone isn't enough.</p>
+    <div class="gids big"><div><span>ORGANIZATION</span><b id="iName"></b></div><div><span>ORGANIZATION ID</span><b id="iId"></b></div><div><span>ACCESS CODE</span><b id="iCode"></b></div></div>
+    <div class="code" id="iLink"></div>
+    <div class="opt"><button id="iCopyLink">Copy link<small>without the code</small></button><button id="iCopyAll">Copy link + code<small>one message</small></button></div>
   </section>
 
   <button class="blackout" id="blackout" aria-label="Blackout mode. Tap to wake"><span>BLACKOUT · SCREEN DARK</span><span>ALERTS ARRIVE AS VIBRATION</span><span style="margin-top:10px">TAP TO WAKE</span></button>
@@ -2341,19 +2400,26 @@ function refreshLive(){
   var n=NET.list.length; $('chanN').textContent=n?(n+1)+' devices':(S.chan===2?'1':S.chan===3?'12':liveCount())+' on';
   $('chanBtn').querySelector('.dotlive').classList.toggle('live',n>0);
   $('ptt').classList.toggle('livemode',n>0); $('liveTag').textContent='LIVE · '+(n+1)+' DEVICES';
-  var tl=$('teamLine'); if(tl) tl.textContent=NET.mode==='p2p'?'Team “'+NET.team+'” · '+(n+1)+' device'+(n?'s':'')+' · peer-to-peer, no account needed':'';
-  var st=$('liveState'); if(st&&NET.mode==='p2p'){ st.textContent=n?'Connected · voice goes straight to the other '+(n>1?n+' devices':'device')+'.':'Waiting for another device. Open the same link (with the same team code) on a second phone.'; } else if(st){ st.textContent=NET.mode==='none'?'Not connected. Open this page signed in to claude.ai on both devices (same account is easiest), then press and hold the green button.':n?'Connected · '+(n+1)+' devices on this page. Voice you record is sent for real.':'Connected. Open the same link on a second device signed in to claude.ai to talk for real.'; }
+  var tl=$('teamLine'); if(tl) tl.textContent=(NET.mode==='p2p'||NET.mode==='local')?(n+1)+' device'+(n?'s':'')+' online · peer-to-peer'+(ORG&&ORG.code?', encrypted with the access code':', no access code set'):(ORG?'Connecting to the organization…':'Solo demo: not signed in to an organization.');
+  var st=$('liveState'); if(st&&NET.mode==='p2p'){ st.textContent=n?'Connected · voice goes straight to the other '+(n>1?n+' devices':'device')+'.':'Waiting for another device. Invite someone, or open the invite link on a second phone.'; } else if(st&&!ORG){ st.textContent='Sign in to an organization to talk to other devices for real.'; } else if(st){ st.textContent=NET.mode==='none'?'Not connected. Open this page signed in to claude.ai on both devices (same account is easiest), then press and hold the green button.':n?'Connected · '+(n+1)+' devices on this page. Voice you record is sent for real.':'Connected. Open the same link on a second device signed in to claude.ai to talk for real.'; }
   if(S.tab==='team'&&S.sheet!=='peek') renderBody();
 }
-function teamCode(){ var c=''; try{ c=new URLSearchParams(location.search).get('team')||localStorage.getItem('fl_team')||''; }catch(e){} c=String(c).toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,24); return c||'demo'; }
+var ORG=null;
+function normId(v){ return String(v||'').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,32); }
+function normCode(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12); }
+function loadOrg(){ try{ var o=JSON.parse(localStorage.getItem('fl_org')||'null'); if(o&&o.id) return o; }catch(e){} return null; }
+function saveOrg(o){ ORG=o; try{ localStorage.setItem('fl_org',JSON.stringify(o)); }catch(e){} }
+function teamCode(){ return ORG?ORG.id:'solo'; }
 function p2pNet(){
+  if(!ORG) return refreshLive();
   var code=teamCode(); NET.team=code;
   import('https://esm.run/trystero@0.26.0').then(function(T){
-    var room=T.joinRoom({appId:'fieldlink-hwezyrmas-v1'},'team-'+code), act=room.makeAction('fl'), csA=room.makeAction('cs');
+    var cfg={appId:'fieldlink-hwezyrmas-v1'}; if(ORG.code) cfg.password=ORG.code;
+    var room=T.joinRoom(cfg,'org-'+code), act=room.makeAction('fl'), csA=room.makeAction('cs');
     NET.p2p={room:room,act:act,cs:csA,names:{}}; NET.mode='p2p';
     act.onMessage=function(m){ if(m&&typeof m.t==='string') netRecv(m.t,m.d); };
-    csA.onMessage=function(c,ctx){ NET.p2p.names[ctx.peerId]=String(c).slice(0,24); listP2P(); };
-    room.onPeerJoin=function(id){ csA.send(CS,{target:id}); listP2P(); sfx('online'); toast('A device joined team “'+code+'”','Hold the green button to talk'); };
+    csA.onMessage=function(c,ctx){ var cs=c&&typeof c==='object'?c.cs:c; NET.p2p.names[ctx.peerId]=String(cs||'').slice(0,24); if(c&&typeof c==='object'&&typeof c.org==='string'&&c.org&&!ORG.name){ ORG.name=c.org.slice(0,40); saveOrg(ORG); renderOrg(); } listP2P(); };
+    room.onPeerJoin=function(id){ csA.send({cs:CS,org:ORG.name||''},{target:id}); listP2P(); sfx('online'); toast((NET.p2p.names[id]||'A device')+' joined '+(ORG.name||ORG.id),'Hold the green button to talk'); setTimeout(function(){ var nm=NET.p2p&&NET.p2p.names[id]; if(nm){ addLog('sys',nm+' joined the organization'); renderAll(); } },1500); };
     room.onPeerLeave=function(id){ delete NET.p2p.names[id]; listP2P(); };
     refreshLive();
   }).catch(function(){ localNet(); });
@@ -2376,11 +2442,11 @@ function setupNet(){
 }
 function localNet(){
   if(NET.mode!=='none'||!('BroadcastChannel' in window)) return refreshLive();
-  NET.bc=new BroadcastChannel('fieldlink-voice'); NET.mode='local'; var seen={};
-  NET.bc.onmessage=function(ev){ var m=ev.data||{}; if(m.from===NET.self) return; if(m.topic==='hello'){ seen[m.from]={t:Date.now(),cs:(m.data&&m.data.cs)||''}; tidy(); return; } netRecv(m.topic,m.data); };
+  NET.bc=new BroadcastChannel('fieldlink-voice-'+teamCode()); NET.mode='local'; var seen={};
+  NET.bc.onmessage=function(ev){ var m=ev.data||{}; if(m.from===NET.self) return; if(m.topic==='hello'){ seen[m.from]={t:Date.now(),cs:(m.data&&m.data.cs)||''}; if(ORG&&!ORG.name&&m.data&&typeof m.data.org==='string'&&m.data.org){ ORG.name=m.data.org.slice(0,40); saveOrg(ORG); renderOrg(); } tidy(); return; } netRecv(m.topic,m.data); };
   function tidy(){ var now=Date.now(), l=[]; Object.keys(seen).forEach(function(k){ if(now-seen[k].t<7000) l.push({cs:seen[k].cs,isMe:true}); else delete seen[k]; }); if(l.length!==NET.list.length){ NET.list=l; refreshLive(); } else NET.list=l; }
-  setInterval(function(){ NET.bc.postMessage({topic:'hello',data:{cs:CS},from:NET.self}); tidy(); },2500);
-  NET.bc.postMessage({topic:'hello',data:{cs:CS},from:NET.self}); refreshLive();
+  setInterval(function(){ NET.bc.postMessage({topic:'hello',data:{cs:CS,org:ORG&&ORG.name||''},from:NET.self}); tidy(); },2500);
+  NET.bc.postMessage({topic:'hello',data:{cs:CS,org:ORG&&ORG.name||''},from:NET.self}); refreshLive();
 }
 
 /* microphone first (often blocked inside the viewer), phone recorder as fallback */
@@ -2474,18 +2540,65 @@ function onTalk(t){
 document.addEventListener('click',function(e){ var b=e.target.closest('[data-clip]'); if(!b) return; playClip(b.dataset.clip,null); });
 /* setup: callsign + simulation switch */
 function renderLiveSetup(){ var i=$('csIn'); if(i&&document.activeElement!==i) i.value=CS; opts('optSim',[['on','Simulated traffic','Scripted events on'],['off','Clean demo','Only real devices']].map(function(o){o[3]='sim';return o;}),function(v){ return (v==='off')===SIM_OFF; }); refreshLive(); }
-$('csIn').addEventListener('change',function(){ var v=this.value.trim().slice(0,24); if(!v) return; CS=v; try{ localStorage.setItem('fl_cs',v); }catch(e){} if(NET.room) NET.room.presence({cs:CS}).catch(function(){}); if(NET.p2p) NET.p2p.cs.send(CS).catch(function(){}); toast('Callsign: '+CS); });
+$('csIn').addEventListener('change',function(){ var v=this.value.trim().slice(0,24); if(!v) return; CS=v; try{ localStorage.setItem('fl_cs',v); }catch(e){} if(NET.room) NET.room.presence({cs:CS}).catch(function(){}); if(NET.p2p) NET.p2p.cs.send({cs:CS,org:ORG&&ORG.name||''}).catch(function(){}); toast('Callsign: '+CS); });
 document.addEventListener('click',function(e){ var b=e.target.closest('[data-sim]'); if(!b) return; SIM_OFF=b.dataset.sim==='off'; try{ localStorage.setItem('fl_sim',SIM_OFF?'off':'on'); }catch(_){} renderLiveSetup(); if(SIM_OFF){ timeline.forEach(clearTimeout); timeline=[]; clearIncoming(); toast('Clean demo','Scripted events are off · only real devices talk'); } else { schedule(); toast('Simulated traffic on'); } });
-function shareLink(){ var u=location.origin+location.pathname+'?team='+encodeURIComponent(NET.team||teamCode()); return u; }
-$('teamIn').value=teamCode();
-$('teamIn').addEventListener('change',function(){ var v=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,24)||'demo'; try{ localStorage.setItem('fl_team',v); }catch(e){} var u=location.pathname+'?team='+v+location.hash; location.href=u; });
-$('teamShare').onclick=function(){ var u=shareLink(); try{ navigator.clipboard.writeText(u).then(function(){ toast('Invite link copied',u); },function(){ toast('Copy this link',u); }); }catch(e){ toast('Copy this link',u); } if(navigator.share){ try{ navigator.share({title:'Fieldlink team '+NET.team,url:u}).catch(function(){}); }catch(e){} } };
-var _rs=renderSettings; renderSettings=function(){ _rs(); renderLiveSetup(); };
+function shareLink(){ return location.origin+location.pathname+'?org='+encodeURIComponent(ORG?ORG.id:''); }
+function copyText(t,msg){ try{ navigator.clipboard.writeText(t).then(function(){ toast(msg); },function(){ toast('Copy blocked','Select the text and copy it'); }); }catch(e){ toast('Copy blocked','Select the text and copy it'); } }
+function renderOrg(){
+  var c=$('orgCard'); if(!c) return;
+  if(!ORG){ c.innerHTML='<div class="wide"><span>ORGANIZATION</span><b>Not signed in</b></div>'; $('teamShare').innerHTML='Sign in<small>join or create</small>'; $('signOut').style.display='none'; return; }
+  $('signOut').style.display=''; $('teamShare').innerHTML='Invite people<small>link + access code</small>';
+  c.innerHTML='<div class="wide"><span>ORGANIZATION</span><b>'+esc(ORG.name||'Unnamed organization')+'</b></div><div><span>ID</span><b>'+esc(ORG.id)+'</b></div><div><span>ACCESS CODE</span><b>'+(ORG.code?esc(ORG.code.slice(0,2))+'••••':'none')+'</b></div><div><span>YOU</span><b>'+esc(CS)+'</b></div><div><span>ROLE</span><b>'+(S.role==='lead'?'Lead':'Member')+'</b></div>';
+}
+$('teamShare').onclick=function(){
+  if(!ORG){ closeBs(); showGate(); return; }
+  $('iName').textContent=ORG.name||'Unnamed organization'; $('iId').textContent=ORG.id; $('iCode').textContent=ORG.code||'none'; $('iLink').textContent=shareLink(); openBs('inviteSheet');
+};
+$('iCopyLink').onclick=function(){ copyText(shareLink(),'Invite link copied'); };
+$('iCopyAll').onclick=function(){ copyText('Join '+(ORG.name||'our team')+' on Fieldlink: '+shareLink()+'\nAccess code: '+(ORG.code||'none'),'Link and code copied'); };
+$('signOut').onclick=function(){ try{ localStorage.removeItem('fl_org'); }catch(e){} if(NET.p2p){ try{ NET.p2p.room.leave(); }catch(e){} } location.href=location.pathname; };
+
+/* ---------- SIGN-IN GATE ---------- */
+var GATE={role:'member',pack:'fire'};
+function rid(n,abc){ var a=abc||'abcdefghjkmnpqrstuvwxyz23456789', o='', r=new Uint32Array(n); try{ crypto.getRandomValues(r); }catch(e){ for(var i=0;i<n;i++) r[i]=Math.random()*1e9; } for(var j=0;j<n;j++) o+=a[r[j]%a.length]; return o; }
+function newIds(){ GATE.id='fl-'+rid(4)+'-'+rid(4); GATE.code=rid(6,'ABCDEFGHJKMNPQRSTUVWXYZ23456789'); $('nId').textContent=GATE.id; $('nCode').textContent=GATE.code; }
+function gateTab(t){ var j=t==='join'; $('gJoin').hidden=!j; $('gNew').hidden=j; $('gTabJoin').classList.toggle('on',j); $('gTabNew').classList.toggle('on',!j); $('gTabJoin').setAttribute('aria-selected',j); $('gTabNew').setAttribute('aria-selected',!j); $('gTitle').textContent=j?'Sign in to your organization':'Create an organization'; $('gErr').textContent=''; if(!j&&!GATE.id) newIds(); }
+function renderGateOpts(){
+  $('gRole').innerHTML=[['member','Member','Do the work'],['lead','Lead','Run roll call']].map(function(o){ return '<button type="button" data-grole="'+o[0]+'" class="'+(GATE.role===o[0]?'on':'')+'">'+o[1]+'<small>'+o[2]+'</small></button>'; }).join('');
+  $('nPack').innerHTML=[['fire','Fire','& Rescue'],['security','Security','Events'],['utilities','Utilities','Field ops']].map(function(o){ return '<button type="button" data-gpack="'+o[0]+'" class="'+(GATE.pack===o[0]?'on':'')+'">'+o[1]+'<small>'+o[2]+'</small></button>'; }).join('');
+}
+function showGate(){ var q=new URLSearchParams(location.search), inv=normId(q.get('org')||q.get('team')||''); if(inv) $('gOrg').value=inv; $('gCs').value=$('gCs').value||(CS.indexOf('Unit ')===0?'':CS); renderGateOpts(); gateTab(inv||!ORG?'join':'join'); $('gate').classList.add('on'); }
+function enterOrg(o,role,pack,created){
+  saveOrg(o); CS=o.cs; try{ localStorage.setItem('fl_cs',CS); }catch(e){}
+  $('gate').classList.remove('on');
+  SIM_OFF=true; try{ localStorage.setItem('fl_sim','off'); }catch(e){}
+  reset(pack||S.pack,true); S.role=role; setSheet('peek'); renderAll(); setFollow(true); centerOn(S.me.x,S.me.y,false); timeline.forEach(clearTimeout); timeline=[];
+  if(history.replaceState){ try{ history.replaceState(null,'',location.pathname+'?org='+o.id+location.hash); }catch(e){} }
+  p2pNet(); renderOrg(); sfx('ok');
+  if(created){ setTimeout(function(){ $('teamShare').onclick(); },500); toast('Organization created','Invite your team with the link and access code'); }
+  else toast('Signed in to '+(o.name||o.id),'Looking for other devices…');
+}
+$('gTabJoin').onclick=function(){ gateTab('join'); }; $('gTabNew').onclick=function(){ gateTab('new'); };
+$('nRegen').onclick=newIds;
+$('gate').addEventListener('click',function(e){ var b=e.target.closest('[data-grole],[data-gpack]'); if(!b) return; if(b.dataset.grole) GATE.role=b.dataset.grole; if(b.dataset.gpack) GATE.pack=b.dataset.gpack; renderGateOpts(); });
+$('gJoin').addEventListener('submit',function(e){ e.preventDefault(); var id=normId($('gOrg').value), cs=$('gCs').value.trim().slice(0,24), code=normCode($('gCode').value);
+  if(id.length<4){ $('gErr').textContent='Enter the organization ID your lead gave you.'; return; } if(!cs){ $('gErr').textContent='Add a callsign so others know who is talking.'; return; }
+  enterOrg({id:id,code:code,name:'',cs:cs},GATE.role,null,false); });
+$('gNew').addEventListener('submit',function(e){ e.preventDefault(); var nm=$('nName').value.trim().slice(0,40), cs=$('nCs').value.trim().slice(0,24);
+  if(!nm){ $('gErr').textContent='Give your organization a name.'; return; } if(!cs){ $('gErr').textContent='Add your callsign.'; return; }
+  enterOrg({id:GATE.id,code:GATE.code,name:nm,cs:cs},'lead',GATE.pack,true); });
+$('gSolo').onclick=function(){ $('gate').classList.remove('on'); SIM_OFF=false; schedule(); renderOrg(); toast('Solo demo','Scripted events on. Sign in from Setup to talk to real devices.'); };
+var _rs=renderSettings; renderSettings=function(){ _rs(); renderLiveSetup(); renderOrg(); };
 
 /* boot */
 buildWave($('pttWave'),14); buildWave($('flWave'),12); buildTape();
 reset('fire'); drawWorld(); renderAll(); setSheet('peek'); centerOn(S.me.x,S.me.y-30,false); schedule(); $('windc').classList.add('on');
-setupNet();
+ORG=loadOrg();
+(function(){ var q=new URLSearchParams(location.search), inv=normId(q.get('org')||q.get('team')||'');
+  if(ORG&&(!inv||inv===ORG.id)){ CS=ORG.cs||CS; setupNet(); renderOrg(); }
+  else if(location.hash==='#tour'||location.hash==='#command'){ ORG=null; renderOrg(); }
+  else { if(inv&&ORG&&inv!==ORG.id) ORG=null; timeline.forEach(clearTimeout); timeline=[]; showGate(); }
+})();
 if(location.hash==='#tour') setTimeout(startTour,600); else if(location.hash==='#command') setTimeout(function(){ setView('cmdr'); },400);
 })();
 </script>
