@@ -12,7 +12,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Barlow+Condensed:wght@600;700;800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Arabic:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Inter:wght@500;600;700;800&family=Barlow+Condensed:wght@600;700;800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Arabic:wght@500;600&display=swap" rel="stylesheet">
 <style>
 /* Layout idea: three zones. Status (top), map (middle: people, the one thing you're doing, hazards),
    comms dock (bottom thumb zone: Report · push-to-talk/video · SOS). Dark by default; Night is a dim red low-light mode. */
@@ -646,6 +646,53 @@ svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stro
 .gpsnote{position:absolute;left:12px;right:12px;top:8px;z-index:4;display:none;padding:8px 10px;border-radius:10px;background:rgba(14,16,19,.92);border:1px solid var(--line);font-size:12.5px;color:var(--muted);line-height:1.35}
 .gpsnote.on{display:block}
 .gpsnote button{margin-left:6px;border:0;background:none;color:var(--accent);font-weight:700;padding:0}
+/* ======== TELCO RED SKIN: daylight, warm off-white, signature red chrome, burgundy depth ======== */
+.phone[data-mode="brand"]{ color-scheme:light;
+  --display:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --bg:#F1EFEA; --surface:#FFFFFF; --surface2:#F7F5F1; --ink:#2A0A12; --muted:#7A5E63; --line:#E2DDD5;
+  --accent:#E00800; --on-accent:#FFFFFF; --team:#6B1027; --on-team:#FFFFFF;
+  --sos:#E00800; --on-sos:#FFFFFF; --ok:#00A36C; --warn:#E8930C; --talk:#6B1027; --on-talk:#FFFFFF;
+  --haz:#E00800; --drone:#6B1027; --ally:#00A36C;
+  --map-bg:#E9E6DF; --land:#F1EFEA; --land2:#ECE9E3; --block:#E1DDD5; --block2:#DAD5CC; --bstroke:#CDC6BB; --road:#FFFFFF; --casing:#D3CCC1;
+  --water:#C9DAE2; --park:#D7E3CF; --label:#8C7B77; --grid:rgba(42,10,18,.06); --glow:none;
+  --scrim:rgba(42,10,18,.45); --shadow:0 8px 24px rgba(60,10,20,.16),0 2px 6px rgba(60,10,20,.08);
+}
+.phone[data-mode="brand"] .hud{background:#E00800;border-bottom:0;--surface:#E00800;--surface2:rgba(255,255,255,.14);--ink:#FFFFFF;--muted:rgba(255,255,255,.82);--line:rgba(255,255,255,.3);color:#fff}
+.phone[data-mode="brand"] .hud .inc .badge{background:#fff;color:#E00800}
+.phone[data-mode="brand"] .strip{background:#6B1027;border-bottom:0;color:#fff;--muted:rgba(255,255,255,.7);--ink:#fff}
+.phone[data-mode="brand"] .dock{border-top:0;box-shadow:0 -6px 20px rgba(60,10,20,.08)}
+.phone[data-mode="brand"] .inc .t,.phone[data-mode="brand"] .card h3,.phone[data-mode="brand"] .bs h2,.phone[data-mode="brand"] .banner h2,.phone[data-mode="brand"] .full h1,.phone[data-mode="brand"] .nowinfo .tt{letter-spacing:-.02em!important;font-weight:800!important}
+.phone[data-mode="brand"] .ptt{border-radius:999px!important}
+.phone[data-mode="brand"] .seg button{font-size:13.5px!important;letter-spacing:-.02em!important;padding:0 4px;min-width:0}
+.phone[data-mode="brand"] .seg button.on{background:#6B1027;color:#fff}
+.phone[data-mode="brand"] .seg{grid-auto-columns:auto;grid-template-columns:minmax(0,1.7fr) repeat(3,minmax(0,1fr))}
+.phone[data-mode="brand"] .seg:not(:has(> :nth-child(4))){grid-template-columns:none;grid-auto-columns:minmax(0,1fr)}
+.phone[data-mode="brand"] .seg button{gap:4px}
+.phone[data-mode="brand"] .primary,.phone[data-mode="brand"] .go{background:#E00800;color:#fff}
+.phone[data-mode="brand"] .mk.peer .dot,.phone[data-mode="brand"] .gpsnote{background:rgba(255,255,255,.95)!important}
+.phone[data-mode="brand"] .gl .maplibregl-ctrl-attrib a{color:#5A4A4D}
+.phone[data-mode="brand"] .gl .maplibregl-ctrl-attrib{background:rgba(255,255,255,.85)!important}
+.phone[data-mode="brand"] .mk .dot{background:#FFFFFF!important;box-shadow:0 2px 8px rgba(60,10,20,.18)}
+.phone[data-mode="brand"] .mk .tag{background:#FFFFFF!important;color:#2A0A12!important}
+.phone[data-mode="brand"] .me .acc{background:rgba(107,16,39,.10)}
+.phone[data-mode="brand"] .gl .maplibregl-ctrl-attrib-button{filter:none}
+/* sign-in: full-bleed red poster with falling rain lines */
+.phone[data-mode="brand"] .gate{background:#E00800;--bg:#E00800;--ink:#FFFFFF;--muted:rgba(255,255,255,.86);--line:rgba(255,255,255,.4);--surface2:rgba(255,255,255,.13);--accent:#6B1027;--sos:#FFFFFF;color:#fff}
+.phone[data-mode="brand"] .gate::before{content:"";position:absolute;left:0;right:0;top:0;height:120px;pointer-events:none;
+  background:repeating-linear-gradient(90deg,transparent 0 22px,rgba(255,255,255,.7) 22px 23.5px,transparent 23.5px 41px,rgba(255,255,255,.45) 41px 42px,transparent 42px 57px);
+  -webkit-mask:linear-gradient(#000 0,#000 30%,transparent 100%),repeating-linear-gradient(90deg,#000 0 30px,transparent 30px 37px);-webkit-mask-composite:source-in;mask-composite:intersect}
+.phone[data-mode="brand"] .gate .gwrap{padding-top:96px;position:relative}
+.phone[data-mode="brand"] .gate h1{color:#5A0D1F;font-size:36px;font-weight:800;letter-spacing:-.03em;line-height:1.02}
+.phone[data-mode="brand"] .gate .primary{background:#fff;color:#E00800}
+.phone[data-mode="brand"] .gate .seg{background:rgba(90,13,31,.35)}
+.phone[data-mode="brand"] .gate .seg button.on{background:#fff;color:#E00800}
+.phone[data-mode="brand"] .gate .field input{background:#fff;color:#2A0A12;border-color:transparent}
+.phone[data-mode="brand"] .gate .field input::placeholder{color:#9A868A}
+.phone[data-mode="brand"] .gate .opt button.on{background:#fff;color:#E00800;border-color:#fff}
+.phone[data-mode="brand"] .gate .gerr{color:#FFE7A8}
+.skinsw{position:absolute;top:14px;right:16px;z-index:2;display:flex;gap:4px;padding:3px;border-radius:999px;background:var(--surface2);border:1px solid var(--line)}
+.skinsw button{height:30px;padding:0 12px;border:0;border-radius:999px;background:transparent;font-size:12.5px;font-weight:700;color:var(--muted)}
+.skinsw button.on{background:var(--ink);color:var(--bg)}
 /* ======== SIGN-IN GATE ======== */
 .gate{position:absolute;inset:0;z-index:95;background:var(--bg);overflow-y:auto;display:none}
 .gate.on{display:block}
@@ -1044,6 +1091,7 @@ svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stro
   </section>
 
   <section class="gate" id="gate" aria-label="Sign in to your organization">
+    <div class="skinsw" id="skinSw" role="group" aria-label="Look"></div>
     <div class="gwrap">
       <div class="glogo"><i></i><span>Fieldlink</span></div>
       <h1 id="gTitle">Sign in to your organization</h1>
@@ -1199,7 +1247,7 @@ function reset(packKey,keep){
   var P=PACKS[packKey], o=S||{};
   ['banner','par','md','sos','hazbar','egbar','video','cmd','floor'].forEach(function(id){ var el=document.getElementById(id); if(el) el.classList.remove('on'); }); var sc=document.getElementById('scrim'); if(sc) sc.classList.remove('on');
   S={
-    pack:packKey, role:keep?o.role:'member', mode:keep?o.mode:'hud', glove:keep?o.glove:false, black:false,
+    pack:packKey, role:keep?o.role:'member', mode:keep?o.mode:(function(){ try{ var m=localStorage.getItem('fl_mode'); return m&&m!=='blackout'?m:'hud'; }catch(e){ return 'hud'; } })(), glove:keep?o.glove:false, black:false,
     net:keep?o.net:'mesh', lang:keep?o.lang:'en', manDown:keep?o.manDown:true, voiceWarn:keep?o.voiceWarn:true, sound:keep?o.sound:'speaker', radioVoice:keep?o.radioVoice:true,
     layers:keep?o.layers:{drones:true,zones:true,trails:true,wind:true,mesh:false,tak:true},
     sheet:'peek', tab:'tasks', t0:Date.now(), me:{x:760,y:960,h:35,air:100,hr:88,gas:0,floor:P.myFloor}, lastMove:Date.now(),
@@ -2087,9 +2135,12 @@ function cycleNet(){
 }
 function setMode(m){
   if(m==='blackout'){ $('blackout').classList.add('on'); S.black=true; haptic(50,'BLACKOUT'); }
-  else { S.mode=m; phone.dataset.mode=m; $('blackout').classList.remove('on'); S.black=false; drawWorld(); }
+  else { S.mode=m; phone.dataset.mode=m; $('blackout').classList.remove('on'); S.black=false; drawWorld(); try{ localStorage.setItem('fl_mode',m); }catch(e){} mapSkin(); renderSkinSw(); }
   renderAll(); renderSettings(); applyView();
 }
+function mapSkin(){ if(typeof MAP==='undefined'||!MAP||!MAP.setStyle) return; var want=S.mode==='brand'?'positron':'dark'; if(MAP._flSkin===want) return; MAP._flSkin=want; try{ MAP.setStyle('https://tiles.openfreemap.org/styles/'+want); }catch(e){} }
+function renderSkinSw(){ var el=$('skinSw'); if(!el) return; var b=S.mode==='brand'; el.innerHTML='<button data-skin="hud" class="'+(b?'':'on')+'">Field</button><button data-skin="brand" class="'+(b?'on':'')+'">Telco Red</button>'; }
+document.addEventListener('click',function(e){ var b=e.target.closest('[data-skin]'); if(!b) return; setMode(b.dataset.skin); });
 function setGlove(on){ S.glove=on; phone.style.setProperty('--tap',on?1.15:1); phone.style.setProperty('--dock',on?'166px':'150px'); renderSettings(); requestAnimationFrame(function(){ renderAll(); setSheet(S.sheet); }); }
 function renderChans(){ var P=PACKS[S.pack]; $('chanList').innerHTML=P.chans.map(function(c,i){ return '<button class="pk'+(S.chan===i?' on':'')+'" data-chan="'+i+'"><span class="badge">'+(i<2?'CH'+(i+1):i===2?'1:1':'TG')+'</span><span><b>'+esc(c[0])+'</b><span>'+esc(c[1])+'</span></span><span class="std">'+c[2]+'</span></button>'; }).join(''); }
 function opts(id,list,cur){ $(id).innerHTML=list.map(function(o){ return '<button data-'+o[3]+'="'+o[0]+'" class="'+(cur(o[0])?'on':'')+'" aria-pressed="'+cur(o[0])+'">'+o[1]+'<small>'+o[2]+'</small></button>'; }).join(''); }
@@ -2097,7 +2148,7 @@ function renderSettings(){
   $('packList').innerHTML=Object.keys(PACKS).map(function(k){ var p=PACKS[k]; return '<button class="pk'+(S.pack===k?' on':'')+'" data-pack="'+k+'"><span class="badge">'+p.badge+'</span><span><b>'+esc(p.name)+'</b><span>'+esc(p.tasksTab)+' · '+esc(p.rollName)+' · '+esc(p.chans[0][0])+'</span></span></button>'; }).join('');
   opts('optRole',[['member','Member','Do the work','role'],['lead','Lead','Roll call · override','role']],function(v){return S.role===v;});
   $('takState').textContent=S.tak.length?'On · '+S.tak.length+' TAK users':'Off · CoT exchange';
-  opts('optMode',[['hud','Field','Default'],['dark','Dark','Neutral'],['night','Night','Low-light red'],['blackout','Blackout','Haptics only']].map(function(o){o[3]='mode';return o;}),function(v){ return v==='blackout'?S.black:(!S.black&&S.mode===v); });
+  opts('optMode',[['hud','Field','Default'],['dark','Dark','Neutral'],['brand','Telco Red','Daylight · brand'],['night','Night','Low-light red'],['blackout','Blackout','Haptics only']].map(function(o){o[3]='mode';return o;}),function(v){ return v==='blackout'?S.black:(!S.black&&S.mode===v); });
   opts('optGlove',[['0','Bare hands','Standard','glove'],['1','Gloves','Bigger targets','glove']],function(v){return (S.glove?'1':'0')===v;});
   opts('optSafety',[['md','Man-down',S.manDown?'On':'Off','safety'],['vw','Spoken warnings',S.voiceWarn?'On':'Off','safety'],['rv','Radio voice',S.radioVoice?'Simulated audio':'Off','safety']],function(v){ return v==='md'?S.manDown:v==='vw'?S.voiceWarn:S.radioVoice; });
   opts('optSound',[['speaker','Speaker','Full volume','sound'],['earpiece','Earpiece','Quiet, close'],['silent','Silent','Stealth · haptics']].map(function(o){o[3]='sound';return o;}),function(v){return S.sound===v;});
@@ -2757,8 +2808,8 @@ function enableReal(){
     REAL=true; phone.classList.add('realmap'); S.layers.drones=false;
     if(SIM_OFF){ S.tasks=[]; S.cur=null; S.reports=[]; S.zones=S.zones.filter(function(z){ return z.id!=='z0'; }); }
     var c=ANCHOR||DEFAULT_CENTER;
-    MAP=new maplibregl.Map({container:'gl',style:'https://tiles.openfreemap.org/styles/dark',center:[c.lon,c.lat],zoom:17,attributionControl:false,dragRotate:false,pitchWithRotate:false,maxPitch:0});
-    MAP.touchZoomRotate.disableRotation(); MAP.keyboard.disableRotation();
+    MAP=new maplibregl.Map({container:'gl',style:'https://tiles.openfreemap.org/styles/'+(S.mode==='brand'?'positron':'dark'),center:[c.lon,c.lat],zoom:17,attributionControl:false,dragRotate:false,pitchWithRotate:false,maxPitch:0});
+    MAP._flSkin=S.mode==='brand'?'positron':'dark'; MAP.touchZoomRotate.disableRotation(); MAP.keyboard.disableRotation();
     MAP.addControl(new maplibregl.AttributionControl({compact:true}),'top-left');
     MAP.on('move',syncView); MAP.on('resize',syncView);
     MAP.on('dragstart',function(){ if(S.follow&&!S.compose) setFollow(false); });
@@ -2811,7 +2862,7 @@ function renderGateOpts(){
   $('nDemo').innerHTML=[['1','Add demo crew','4 simulated people around you'],['0','Real people only','Just invited devices']].map(function(o){ return '<button type="button" data-gdemo="'+o[0]+'" class="'+((GATE.demo?'1':'0')===o[0]?'on':'')+'">'+o[1]+'<small>'+o[2]+'</small></button>'; }).join('');
   $('nPack').innerHTML=[['fire','Fire','& Rescue'],['security','Security','Events'],['utilities','Utilities','Field ops']].map(function(o){ return '<button type="button" data-gpack="'+o[0]+'" class="'+(GATE.pack===o[0]?'on':'')+'">'+o[1]+'<small>'+o[2]+'</small></button>'; }).join('');
 }
-function showGate(){ var q=new URLSearchParams(location.search), inv=normId(q.get('org')||q.get('team')||''); if(inv) $('gOrg').value=inv; $('gCs').value=$('gCs').value||(CS.indexOf('Unit ')===0?'':CS); renderGateOpts(); gateTab(inv||!ORG?'join':'join'); $('gate').classList.add('on'); }
+function showGate(){ renderSkinSw(); var q=new URLSearchParams(location.search), inv=normId(q.get('org')||q.get('team')||''); if(inv) $('gOrg').value=inv; $('gCs').value=$('gCs').value||(CS.indexOf('Unit ')===0?'':CS); renderGateOpts(); gateTab(inv||!ORG?'join':'join'); $('gate').classList.add('on'); }
 function enterOrg(o,role,pack,created){
   saveOrg(o); CS=o.cs; try{ localStorage.setItem('fl_cs',CS); }catch(e){}
   $('gate').classList.remove('on');
@@ -2846,6 +2897,7 @@ ORG=loadOrg();
 })();
 if(location.hash==='#tour') setTimeout(startTour,600); else if(location.hash==='#command') setTimeout(function(){ setView('cmdr'); },400);
 })();
+try{ var _m0=localStorage.getItem('fl_mode'); if(_m0&&_m0!=='blackout'){ document.getElementById('phone').dataset.mode=_m0; if(typeof S!=='undefined'&&S) S.mode=_m0; } renderSkinSw(); }catch(e){ console.warn('skin',e); }
 </script>
 </body>
 </html>
