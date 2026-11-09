@@ -1050,6 +1050,7 @@ svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stro
       <form id="gNew" class="gform" autocomplete="off" hidden>
         <div class="field"><label for="nName">ORGANIZATION NAME</label><input id="nName" placeholder="e.g. Dubai Civil Defence · Station 4" maxlength="40" required></div>
         <div class="field"><label>INDUSTRY PACK</label><div class="opt" id="nPack"></div></div>
+        <div class="field"><label>DEMO USERS</label><div class="opt" id="nDemo"></div></div>
         <div class="field"><label for="nCs">YOUR CALLSIGN</label><input id="nCs" placeholder="e.g. IC Haddad" maxlength="24" required></div>
         <div class="gids"><div><span>ORGANIZATION ID</span><b id="nId">fl-····-····</b></div><div><span>ACCESS CODE</span><b id="nCode">······</b></div><button type="button" class="linkbtn" id="nRegen">New ID</button></div>
         <button class="primary hot" type="submit">Create and enter as lead</button>
@@ -2570,9 +2571,12 @@ function onTalk(t){
 }
 document.addEventListener('click',function(e){ var b=e.target.closest('[data-clip]'); if(!b) return; playClip(b.dataset.clip,null); });
 /* setup: callsign + simulation switch */
-function renderLiveSetup(){ var i=$('csIn'); if(i&&document.activeElement!==i) i.value=CS; opts('optSim',[['on','Simulated traffic','Scripted events on'],['off','Clean demo','Only real devices']].map(function(o){o[3]='sim';return o;}),function(v){ return (v==='off')===SIM_OFF; }); refreshLive(); }
+function renderLiveSetup(){ var i=$('csIn'); if(i&&document.activeElement!==i) i.value=CS; opts('optSim',[['on','Demo crew','Simulated people + events'],['off','Real only','Just real devices']].map(function(o){o[3]='sim';return o;}),function(v){ return (v==='off')===SIM_OFF; }); refreshLive(); }
 $('csIn').addEventListener('change',function(){ var v=this.value.trim().slice(0,24); if(!v) return; CS=v; try{ localStorage.setItem('fl_cs',v); }catch(e){} if(NET.room) NET.room.presence({cs:CS}).catch(function(){}); if(NET.p2p) NET.p2p.cs.send({cs:CS,org:ORG&&ORG.name||''}).catch(function(){}); toast('Callsign: '+CS); });
-document.addEventListener('click',function(e){ var b=e.target.closest('[data-sim]'); if(!b) return; SIM_OFF=b.dataset.sim==='off'; try{ localStorage.setItem('fl_sim',SIM_OFF?'off':'on'); }catch(_){} renderLiveSetup(); if(SIM_OFF){ timeline.forEach(clearTimeout); timeline=[]; clearIncoming(); toast('Clean demo','Scripted events are off · only real devices talk'); } else { schedule(); toast('Simulated traffic on'); } });
+document.addEventListener('click',function(e){ var b=e.target.closest('[data-sim]'); if(!b) return; SIM_OFF=b.dataset.sim==='off'; try{ localStorage.setItem('fl_sim',SIM_OFF?'off':'on'); }catch(_){} if(ORG){ ORG.demo=!SIM_OFF; saveOrg(ORG); }
+  renderLiveSetup();
+  if(SIM_OFF){ timeline.forEach(clearTimeout); timeline=[]; clearIncoming(); if(REAL){ S.tasks=[]; S.cur=null; S.zones=S.zones.filter(function(z){ return z.id!=='z0'; }); } renderAll(); toast('Demo crew off','Only real devices and what you create are shown'); }
+  else { if(REAL){ var keepMe={x:S.me.x,y:S.me.y,h:S.me.h}; reset(S.pack,true); S.me.x=keepMe.x; S.me.y=keepMe.y; S.me.h=keepMe.h; S.layers.drones=false; setSheet('peek'); } renderAll(); schedule(); toast('Demo crew on','4 simulated people around you, with scripted tasks, radio and alerts'); } });
 function shareLink(){ return location.origin+location.pathname+'?org='+encodeURIComponent(ORG?ORG.id:''); }
 function copyText(t,msg){ try{ navigator.clipboard.writeText(t).then(function(){ toast(msg); },function(){ toast('Copy blocked','Select the text and copy it'); }); }catch(e){ toast('Copy blocked','Select the text and copy it'); } }
 function renderOrg(){
@@ -2650,20 +2654,22 @@ window.addEventListener('deviceorientation',function(e){ if(e.webkitCompassHeadi
 document.addEventListener('click',function askCompass(){ document.removeEventListener('click',askCompass); try{ if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission) DeviceOrientationEvent.requestPermission().catch(function(){}); }catch(e){} },{once:true});
 
 /* ---------- SIGN-IN GATE ---------- */
-var GATE={role:'member',pack:'fire'};
+var GATE={role:'member',pack:'fire',demo:true};
 function rid(n,abc){ var a=abc||'abcdefghjkmnpqrstuvwxyz23456789', o='', r=new Uint32Array(n); try{ crypto.getRandomValues(r); }catch(e){ for(var i=0;i<n;i++) r[i]=Math.random()*1e9; } for(var j=0;j<n;j++) o+=a[r[j]%a.length]; return o; }
 function newIds(){ GATE.id='fl-'+rid(4)+'-'+rid(4); GATE.code=rid(6,'ABCDEFGHJKMNPQRSTUVWXYZ23456789'); $('nId').textContent=GATE.id; $('nCode').textContent=GATE.code; }
 function gateTab(t){ var j=t==='join'; $('gJoin').hidden=!j; $('gNew').hidden=j; $('gTabJoin').classList.toggle('on',j); $('gTabNew').classList.toggle('on',!j); $('gTabJoin').setAttribute('aria-selected',j); $('gTabNew').setAttribute('aria-selected',!j); $('gTitle').textContent=j?'Sign in to your organization':'Create an organization'; $('gErr').textContent=''; if(!j&&!GATE.id) newIds(); }
 function renderGateOpts(){
   $('gRole').innerHTML=[['member','Member','Do the work'],['lead','Lead','Run roll call']].map(function(o){ return '<button type="button" data-grole="'+o[0]+'" class="'+(GATE.role===o[0]?'on':'')+'">'+o[1]+'<small>'+o[2]+'</small></button>'; }).join('');
+  $('nDemo').innerHTML=[['1','Add demo crew','4 simulated people around you'],['0','Real people only','Just invited devices']].map(function(o){ return '<button type="button" data-gdemo="'+o[0]+'" class="'+((GATE.demo?'1':'0')===o[0]?'on':'')+'">'+o[1]+'<small>'+o[2]+'</small></button>'; }).join('');
   $('nPack').innerHTML=[['fire','Fire','& Rescue'],['security','Security','Events'],['utilities','Utilities','Field ops']].map(function(o){ return '<button type="button" data-gpack="'+o[0]+'" class="'+(GATE.pack===o[0]?'on':'')+'">'+o[1]+'<small>'+o[2]+'</small></button>'; }).join('');
 }
 function showGate(){ var q=new URLSearchParams(location.search), inv=normId(q.get('org')||q.get('team')||''); if(inv) $('gOrg').value=inv; $('gCs').value=$('gCs').value||(CS.indexOf('Unit ')===0?'':CS); renderGateOpts(); gateTab(inv||!ORG?'join':'join'); $('gate').classList.add('on'); }
 function enterOrg(o,role,pack,created){
   saveOrg(o); CS=o.cs; try{ localStorage.setItem('fl_cs',CS); }catch(e){}
   $('gate').classList.remove('on');
-  SIM_OFF=true; try{ localStorage.setItem('fl_sim','off'); }catch(e){}
+  SIM_OFF=!o.demo; try{ localStorage.setItem('fl_sim',SIM_OFF?'off':'on'); }catch(e){}
   reset(pack||S.pack,true); S.role=role; setSheet('peek'); renderAll(); setFollow(true); centerOn(S.me.x,S.me.y,false); timeline.forEach(clearTimeout); timeline=[];
+  if(o.demo) schedule();
   if(history.replaceState){ try{ history.replaceState(null,'',location.pathname+'?org='+o.id+location.hash); }catch(e){} }
   p2pNet(); renderOrg(); sfx('ok'); enableReal();
   if(created){ setTimeout(function(){ $('teamShare').onclick(); },500); toast('Organization created','Invite your team with the link and access code'); }
@@ -2671,13 +2677,13 @@ function enterOrg(o,role,pack,created){
 }
 $('gTabJoin').onclick=function(){ gateTab('join'); }; $('gTabNew').onclick=function(){ gateTab('new'); };
 $('nRegen').onclick=newIds;
-$('gate').addEventListener('click',function(e){ var b=e.target.closest('[data-grole],[data-gpack]'); if(!b) return; if(b.dataset.grole) GATE.role=b.dataset.grole; if(b.dataset.gpack) GATE.pack=b.dataset.gpack; renderGateOpts(); });
+$('gate').addEventListener('click',function(e){ var b=e.target.closest('[data-grole],[data-gpack],[data-gdemo]'); if(!b) return; if(b.dataset.grole) GATE.role=b.dataset.grole; if(b.dataset.gpack) GATE.pack=b.dataset.gpack; if(b.dataset.gdemo) GATE.demo=b.dataset.gdemo==='1'; renderGateOpts(); });
 $('gJoin').addEventListener('submit',function(e){ e.preventDefault(); var id=normId($('gOrg').value), cs=$('gCs').value.trim().slice(0,24), code=normCode($('gCode').value);
   if(id.length<4){ $('gErr').textContent='Enter the organization ID your lead gave you.'; return; } if(!cs){ $('gErr').textContent='Add a callsign so others know who is talking.'; return; }
   enterOrg({id:id,code:code,name:'',cs:cs},GATE.role,null,false); });
 $('gNew').addEventListener('submit',function(e){ e.preventDefault(); var nm=$('nName').value.trim().slice(0,40), cs=$('nCs').value.trim().slice(0,24);
   if(!nm){ $('gErr').textContent='Give your organization a name.'; return; } if(!cs){ $('gErr').textContent='Add your callsign.'; return; }
-  enterOrg({id:GATE.id,code:GATE.code,name:nm,cs:cs},'lead',GATE.pack,true); });
+  enterOrg({id:GATE.id,code:GATE.code,name:nm,cs:cs,demo:GATE.demo},'lead',GATE.pack,true); });
 $('gSolo').onclick=function(){ $('gate').classList.remove('on'); SIM_OFF=false; schedule(); renderOrg(); toast('Solo demo','Scripted events on. Sign in from Setup to talk to real devices.'); };
 var _rs=renderSettings; renderSettings=function(){ _rs(); renderLiveSetup(); renderOrg(); };
 
