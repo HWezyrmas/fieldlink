@@ -617,6 +617,11 @@ svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stro
 .arow .bar{height:12px;background:var(--line);position:relative}.arow .bar i{position:absolute;left:0;top:0;bottom:0}
 .arow .bar u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
 .arow span{font-family:var(--mono);font-size:11px;text-align:right;font-weight:600}
+/* ======== SOUND LAB ======== */
+.sndlab{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.sndlab button{min-height:48px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface2);color:var(--ink);font-family:var(--body);font-size:13px;font-weight:600;line-height:1.15;padding:4px}
+.sndlab button:active{background:var(--ink);color:var(--bg)}
+.sndlab button.play{border-color:var(--accent)}
 /* ======== LIVE VOICE ======== */
 .playclip{margin-top:6px;height:40px;padding:0 12px;border-radius:10px;border:1.5px solid var(--talk);background:transparent;color:var(--talk);font-family:var(--body);font-weight:700;font-size:14px;display:inline-flex;align-items:center;gap:6px}
 .playclip svg.i{width:16px;height:16px}
@@ -984,7 +989,10 @@ svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stro
     <h4>HANDS</h4><div class="opt" id="optGlove"></div>
     <h4>SAFETY</h4><div class="opt" id="optSafety"></div>
     <h4>SOUND · BLACKOUT IS ALWAYS SILENT</h4><div class="opt" id="optSound"></div>
-    <div class="opt"><button id="sndTest">Play the sound set<small>talk permit · roger · alerts</small></button></div>
+    <h4>SOUND SET · TAP A SET, THEN TAP ANY SOUND TO HEAR IT</h4>
+    <div class="opt wrap" id="optSnd" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div>
+    <div class="sndlab" id="sndLab"></div>
+    <div class="opt"><button id="sndTest">Play the whole set<small>talk, incoming, task, hazard, SOS</small></button></div>
     <h4>RADIO LANGUAGE · LIVE TRANSLATION</h4><div class="opt" id="optLang"></div>
     <h4>MAP LAYERS</h4><div class="opt" id="optLayers"></div>
     <h4>HARDWARE BUTTONS · HOLD TO TEST</h4>
@@ -1214,8 +1222,8 @@ function audio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioC
 document.addEventListener('pointerdown',function(){ audio(); },{capture:true});
 document.addEventListener('keydown',function(){ audio(); },{capture:true});
 function vol(){ return S.sound==='silent'||S.black?0:S.sound==='earpiece'?0.22:0.6; }
-var BUS=null;
-/* radio speaker chain: band-limited 350-3200 Hz, gentle saturation, light compression */
+var BUS=null, CLEAN=null, REVERB=null;
+/* chain 1, radio: band-limited speaker with mild saturation (the "Radio" set and live voice in it) */
 function bus(){ var a=audio(); if(!a) return null; if(BUS) return BUS;
   var hp=a.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=350; hp.Q.value=0.7;
   var lp=a.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3200; lp.Q.value=0.7;
@@ -1223,47 +1231,176 @@ function bus(){ var a=audio(); if(!a) return null; if(BUS) return BUS;
   var comp=a.createDynamicsCompressor(); comp.threshold.value=-16; comp.ratio.value=4; comp.attack.value=0.002; comp.release.value=0.12;
   var input=a.createGain(); input.connect(hp); hp.connect(lp); lp.connect(ws); ws.connect(comp); comp.connect(a.destination);
   BUS=input; return BUS; }
+/* chain 2, clean: gentle low-pass, soft compression and a short room reverb (Pro, Minimal, Cinematic) */
+function clean(){ var a=audio(); if(!a) return null; if(CLEAN) return CLEAN;
+  var input=a.createGain(), lp=a.createBiquadFilter(), comp=a.createDynamicsCompressor(), dry=a.createGain(), wet=a.createGain(), conv=a.createConvolver();
+  lp.type='lowpass'; lp.frequency.value=7000; comp.threshold.value=-18; comp.ratio.value=2.5; comp.attack.value=0.004; comp.release.value=0.18;
+  var len=Math.floor(a.sampleRate*0.9), ir=a.createBuffer(2,len,a.sampleRate); for(var c=0;c<2;c++){ var d=ir.getChannelData(c); for(var i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3.2)*0.6; } conv.buffer=ir;
+  dry.gain.value=1; wet.gain.value=0.16;
+  input.connect(lp); lp.connect(dry); lp.connect(conv); conv.connect(wet); dry.connect(comp); wet.connect(comp); comp.connect(a.destination);
+  CLEAN=input; return CLEAN; }
+function voiceBus(){ return SND==='radio'?bus():clean(); }
+var SND='pro'; try{ SND=localStorage.getItem('fl_snd')||'pro'; }catch(e){}
+function out(){ return SND==='radio'?bus():clean(); }
+function now(){ var a=audio(); return a?a.currentTime:0; }
+/* radio tone: plain sine with hard-ish edges (classic handset) */
 function tone(f,d,at,v,f2){
-  var a=audio(), out=bus(); if(!a||!out) return; var V=vol()*(v||1)*0.5; if(!V) return;
+  var a=audio(), o0=out(); if(!a||!o0) return; var V=vol()*(v||1)*0.5; if(!V) return;
   var t=a.currentTime+(at||0), o=a.createOscillator(), g=a.createGain(); o.type='sine'; o.frequency.setValueAtTime(f,t); if(f2) o.frequency.linearRampToValueAtTime(f2,t+d);
   g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(V,t+0.004); g.gain.setValueAtTime(V,t+Math.max(0.006,d-0.008)); g.gain.linearRampToValueAtTime(0.0001,t+d);
-  o.connect(g); g.connect(out); o.start(t); o.stop(t+d+0.02);
+  o.connect(g); g.connect(o0); o.start(t); o.stop(t+d+0.02);
 }
+/* pluck: a soft mallet note (sine body + quiet upper partial, fast exponential decay) */
+function pluck(f,at,v,len){
+  var a=audio(), o0=out(); if(!a||!o0) return; var V=vol()*(v||1)*0.55; if(!V) return; len=len||0.28;
+  var t=a.currentTime+(at||0);
+  [[1,1,len],[4.01,0.12,len*0.35],[2,0.18,len*0.6]].forEach(function(p){ var o=a.createOscillator(), g=a.createGain(); o.type='sine'; o.frequency.value=f*p[0];
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(V*p[1],t+0.004); g.gain.exponentialRampToValueAtTime(0.0001,t+p[2]); o.connect(g); g.connect(o0); o.start(t); o.stop(t+p[2]+0.05); });
+}
+/* pad: rounded sustained tone with tremolo, for alarms that must be noticed without being harsh */
+function hold(f,d,at,v,trem,f2){
+  var a=audio(), o0=out(); if(!a||!o0) return; var V=vol()*(v||1)*0.42; if(!V) return;
+  var t=a.currentTime+(at||0), o=a.createOscillator(), o2=a.createOscillator(), g=a.createGain(), lp=a.createBiquadFilter();
+  o.type='triangle'; o2.type='sine'; o.frequency.setValueAtTime(f,t); o2.frequency.setValueAtTime(f/2,t); if(f2){ o.frequency.linearRampToValueAtTime(f2,t+d); o2.frequency.linearRampToValueAtTime(f2/2,t+d); }
+  lp.type='lowpass'; lp.frequency.value=Math.min(4000,f*3);
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(V,t+0.03); g.gain.setValueAtTime(V,t+d-0.06); g.gain.linearRampToValueAtTime(0.0001,t+d);
+  var g2=a.createGain(); g2.gain.value=0.35; o.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(g);
+  if(trem){ var lfo=a.createOscillator(), lg=a.createGain(), tg=a.createGain(); lfo.frequency.value=trem; lg.gain.value=0.45; tg.gain.value=0.55; lfo.connect(lg); lg.connect(tg.gain); g.connect(tg); tg.connect(o0); lfo.start(t); lfo.stop(t+d+0.05); } else g.connect(o0);
+  o.start(t); o2.start(t); o.stop(t+d+0.05); o2.stop(t+d+0.05);
+}
+/* click: a very short filtered tick */
+function click(f,at,v){ var a=audio(), o0=out(); if(!a||!o0) return; var V=vol()*(v||1)*0.5; if(!V) return; var t=a.currentTime+(at||0), o=a.createOscillator(), g=a.createGain(); o.type='sine'; o.frequency.setValueAtTime(f,t); o.frequency.exponentialRampToValueAtTime(f*0.6,t+0.03); g.gain.setValueAtTime(V,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.035); o.connect(g); g.connect(o0); o.start(t); o.stop(t+0.05); }
+/* fm: metallic synth bell for the cinematic set */
+function fm(f,at,v,len,ratio,index){
+  var a=audio(), o0=out(); if(!a||!o0) return; var V=vol()*(v||1)*0.45; if(!V) return; len=len||0.6; var t=a.currentTime+(at||0);
+  var car=a.createOscillator(), mod=a.createOscillator(), mg=a.createGain(), g=a.createGain(); car.frequency.value=f; mod.frequency.value=f*(ratio||1.4); mg.gain.setValueAtTime(f*(index||2),t); mg.gain.exponentialRampToValueAtTime(1,t+len);
+  mod.connect(mg); mg.connect(car.frequency); g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(V,t+0.006); g.gain.exponentialRampToValueAtTime(0.0001,t+len); car.connect(g); g.connect(o0);
+  car.start(t); mod.start(t); car.stop(t+len+0.05); mod.stop(t+len+0.05);
+}
+function thump(f,at,v){ var a=audio(), o0=out(); if(!a||!o0) return; var V=vol()*(v||1)*0.8; if(!V) return; var t=a.currentTime+(at||0), o=a.createOscillator(), g=a.createGain(); o.type='sine'; o.frequency.setValueAtTime(f*2,t); o.frequency.exponentialRampToValueAtTime(f,t+0.08); g.gain.setValueAtTime(V,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.35); o.connect(g); g.connect(o0); o.start(t); o.stop(t+0.4); }
+function swoosh(up,at,v){ var a=audio(), o0=out(); if(!a||!o0) return; var V=vol()*(v||1)*0.5; if(!V) return; var t=a.currentTime+(at||0), d=0.18, n=Math.floor(a.sampleRate*d), buf=a.createBuffer(1,n,a.sampleRate), ch=buf.getChannelData(0); for(var i=0;i<n;i++) ch[i]=Math.random()*2-1;
+  var src=a.createBufferSource(), bp=a.createBiquadFilter(), g=a.createGain(); src.buffer=buf; bp.type='bandpass'; bp.Q.value=2.2; bp.frequency.setValueAtTime(up?500:2600,t); bp.frequency.exponentialRampToValueAtTime(up?2600:500,t+d);
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(V,t+0.05); g.gain.exponentialRampToValueAtTime(0.0001,t+d); src.connect(bp); bp.connect(g); g.connect(o0); src.start(t); }
 /* squelch: the burst of hiss a real radio makes when the carrier opens or drops */
 function squelch(at,d,v){
-  var a=audio(), out=bus(); if(!a||!out) return; var V=vol()*(v||1); if(!V) return; d=d||0.22;
+  var a=audio(), o0=out(); if(!a||!o0) return; var V=vol()*(v||1); if(!V) return; d=d||0.22;
   var n=Math.floor(a.sampleRate*d), buf=a.createBuffer(1,n,a.sampleRate), ch=buf.getChannelData(0); for(var i=0;i<n;i++){ var e=i<n*0.08?i/(n*0.08):Math.pow(1-(i-n*0.08)/(n*0.92),1.6); ch[i]=(Math.random()*2-1)*e; }
-  var src=a.createBufferSource(), f=a.createBiquadFilter(), g=a.createGain(); src.buffer=buf; f.type='bandpass'; f.frequency.value=2000; f.Q.value=0.6; g.gain.value=V*0.42;
-  src.connect(f); f.connect(g); g.connect(out); src.start(a.currentTime+(at||0));
+  var src=a.createBufferSource(), f=a.createBiquadFilter(), g=a.createGain(); src.buffer=buf; f.type='bandpass'; f.frequency.value=2000; f.Q.value=0.6; g.gain.value=V*(SND==='radio'?0.42:0.14);
+  src.connect(f); f.connect(g); g.connect(o0); src.start(a.currentTime+(at||0));
 }
 function beeps(f,n,len,gap,at,v){ for(var i=0;i<n;i++) tone(f,len,(at||0)+i*(len+gap),v); }
-var SFX={
-  permit:function(){ tone(1000,.075,0,.9); },                                   /* talk permit tone: one short chirp */
-  roger:function(){ tone(1200,.09,0,.8); squelch(.11,.24,.9); },                /* end-of-transmission beep + squelch tail */
-  rxStart:function(){ squelch(0,.05,.8); },                                      /* carrier opens */
-  rxEnd:function(){ squelch(0,.26,1); },                                         /* carrier drops: the classic "kssht" */
-  busy:function(){ tone(420,.32,0,.9); },                                        /* channel busy "bonk" */
-  granted:function(){ beeps(1000,2,.06,.05,0,.9); },                             /* floor granted after queue */
-  task:function(){ beeps(1050,2,.11,.09,0,.85); },
-  ok:function(){ tone(1500,.05,0,.55); },
-  tick:function(){ tone(1800,.018,0,.25); },
-  delivered:function(){ tone(2200,.02,0,.16); },
-  drop:function(){ tone(800,.08,0,.6,500); },
-  hazard:function(){ for(var i=0;i<4;i++){ tone(960,.18,i*.38,.9); tone(720,.18,i*.38+.19,.9); } },
-  clear:function(){ tone(720,.08,0,.6); tone(960,.1,.1,.6); },
-  arm:function(){ beeps(880,3,.09,.08,0,.85); },
-  count:function(){ tone(1000,.06,0,.6); },
-  siren:function(){ for(var i=0;i<8;i++){ tone(1400,.12,i*.25,.85); tone(700,.12,i*.25+.125,.85); } },   /* emergency alert tone */
-  cancel:function(){ tone(900,.12,0,.6,500); },
-  mandown:function(){ beeps(1150,3,.2,.16,0,.95); },
-  checkin:function(){ tone(800,.08,0,.8); tone(1000,.08,.11,.8); tone(1250,.12,.22,.8); },
-  offline:function(){ tone(520,.14,0,.7); tone(390,.2,.16,.7); },              /* out of range */
-  online:function(){ tone(390,.1,0,.7); tone(520,.14,.12,.7); },
-  lost:function(){ tone(600,.1,0,.7); tone(480,.1,.13,.7); tone(380,.18,.26,.7); },
-  escalate:function(){ for(var i=0;i<3;i++){ tone(1300,.1,i*.24,.85); tone(900,.1,i*.24+.12,.85); } },
-  video:function(){ beeps(1250,2,.05,.05,0,.7); }
+var PACKS_SND={
+  /* PRO: soft mallet notes, musical intervals, rounded alarms. Calm but unmistakable. */
+  pro:{
+    permit:function(){ pluck(784,0,.8); pluck(1046,.07,.8); },
+    roger:function(){ pluck(1046,0,.7); pluck(784,.08,.7); },
+    rxStart:function(){ pluck(659,0,.55,.22); },
+    rxEnd:function(){ pluck(523,0,.5,.3); },
+    busy:function(){ pluck(196,0,.9,.35); pluck(196,.16,.7,.35); },
+    granted:function(){ pluck(784,0,.7); pluck(988,.08,.7); pluck(1175,.16,.8,.4); },
+    task:function(){ pluck(659,0,.85,.4); pluck(988,.12,.85,.5); pluck(659,.5,.55,.35); pluck(988,.62,.55,.45); },
+    ok:function(){ pluck(1318,0,.45,.2); },
+    tick:function(){ click(2200,0,.25); },
+    delivered:function(){ pluck(1760,0,.2,.15); },
+    drop:function(){ thump(110,0,.5); pluck(1318,.05,.3,.2); },
+    hazard:function(){ for(var i=0;i<3;i++){ hold(740,.24,i*.52,.9); hold(554,.24,i*.52+.26,.9); } },
+    clear:function(){ pluck(554,0,.6); pluck(740,.1,.6,.4); },
+    arm:function(){ for(var i=0;i<3;i++) hold(880,.12,i*.2,.8); },
+    count:function(){ pluck(880,0,.5,.15); },
+    siren:function(){ hold(520,.9,0,.9,6,920); hold(920,.9,.9,.9,6,520); hold(520,.9,1.8,.9,6,920); },
+    cancel:function(){ pluck(659,0,.6); pluck(440,.1,.6,.4); },
+    mandown:function(){ for(var i=0;i<3;i++) hold(988,.22,i*.38,.95,9); },
+    checkin:function(){ pluck(523,0,.75); pluck(659,.12,.75); pluck(784,.24,.8,.5); },
+    offline:function(){ pluck(440,0,.6,.35); pluck(330,.16,.6,.5); },
+    online:function(){ pluck(330,0,.6,.3); pluck(440,.14,.6,.45); },
+    lost:function(){ pluck(523,0,.6); pluck(440,.14,.6); pluck(349,.28,.6,.5); },
+    escalate:function(){ for(var i=0;i<3;i++){ hold(880,.12,i*.28,.85); hold(659,.12,i*.28+.14,.85); } },
+    video:function(){ pluck(880,0,.6); pluck(1175,.09,.6,.4); }
+  },
+  /* RADIO: two-way-radio tones through a small-speaker filter, with squelch. */
+  radio:{
+    permit:function(){ tone(1000,.075,0,.9); },
+    roger:function(){ tone(1200,.09,0,.8); squelch(.11,.24,.9); },
+    rxStart:function(){ squelch(0,.05,.8); },
+    rxEnd:function(){ squelch(0,.26,1); },
+    busy:function(){ tone(420,.32,0,.9); },
+    granted:function(){ beeps(1000,2,.06,.05,0,.9); },
+    task:function(){ beeps(1050,2,.11,.09,0,.85); },
+    ok:function(){ tone(1500,.05,0,.55); },
+    tick:function(){ tone(1800,.018,0,.25); },
+    delivered:function(){ tone(2200,.02,0,.16); },
+    drop:function(){ tone(800,.08,0,.6,500); },
+    hazard:function(){ for(var i=0;i<4;i++){ tone(960,.18,i*.38,.9); tone(720,.18,i*.38+.19,.9); } },
+    clear:function(){ tone(720,.08,0,.6); tone(960,.1,.1,.6); },
+    arm:function(){ beeps(880,3,.09,.08,0,.85); },
+    count:function(){ tone(1000,.06,0,.6); },
+    siren:function(){ for(var i=0;i<8;i++){ tone(1400,.12,i*.25,.85); tone(700,.12,i*.25+.125,.85); } },
+    cancel:function(){ tone(900,.12,0,.6,500); },
+    mandown:function(){ beeps(1150,3,.2,.16,0,.95); },
+    checkin:function(){ tone(800,.08,0,.8); tone(1000,.08,.11,.8); tone(1250,.12,.22,.8); },
+    offline:function(){ tone(520,.14,0,.7); tone(390,.2,.16,.7); },
+    online:function(){ tone(390,.1,0,.7); tone(520,.14,.12,.7); },
+    lost:function(){ tone(600,.1,0,.7); tone(480,.1,.13,.7); tone(380,.18,.26,.7); },
+    escalate:function(){ for(var i=0;i<3;i++){ tone(1300,.1,i*.24,.85); tone(900,.1,i*.24+.12,.85); } },
+    video:function(){ beeps(1250,2,.05,.05,0,.7); }
+  },
+  /* MINIMAL: near-silent clicks for routine feedback; only real alarms make real noise. */
+  minimal:{
+    permit:function(){ click(1600,0,.5); },
+    roger:function(){ click(1200,0,.45); },
+    rxStart:function(){ click(1400,0,.35); },
+    rxEnd:function(){ click(1000,0,.3); },
+    busy:function(){ click(500,0,.6); click(500,.1,.5); },
+    granted:function(){ click(1600,0,.5); click(2000,.08,.5); },
+    task:function(){ pluck(880,0,.5,.25); pluck(1175,.1,.5,.3); },
+    ok:function(){ click(2000,0,.3); },
+    tick:function(){ click(2400,0,.18); },
+    delivered:function(){ click(2600,0,.12); },
+    drop:function(){ click(700,0,.4); },
+    hazard:function(){ for(var i=0;i<2;i++){ hold(740,.22,i*.5,.7); hold(554,.22,i*.5+.25,.7); } },
+    clear:function(){ click(1500,0,.4); click(1900,.08,.4); },
+    arm:function(){ for(var i=0;i<3;i++) click(1200,i*.18,.6); },
+    count:function(){ click(1400,0,.45); },
+    siren:function(){ hold(520,.8,0,.75,6,880); hold(880,.8,.8,.75,6,520); },
+    cancel:function(){ click(900,0,.4); click(600,.08,.4); },
+    mandown:function(){ for(var i=0;i<3;i++) hold(988,.18,i*.34,.8,9); },
+    checkin:function(){ pluck(659,0,.5,.25); pluck(880,.1,.5,.3); },
+    offline:function(){ click(800,0,.4); click(500,.1,.4); },
+    online:function(){ click(500,0,.4); click(800,.1,.4); },
+    lost:function(){ click(900,0,.4); click(700,.1,.4); click(500,.2,.4); },
+    escalate:function(){ for(var i=0;i<2;i++){ hold(880,.12,i*.3,.7); hold(659,.12,i*.3+.15,.7); } },
+    video:function(){ click(1500,0,.4); click(1800,.08,.4); }
+  },
+  /* CINEMATIC: deep thumps, air swooshes and metallic FM bells. Dramatic, demo-friendly. */
+  cinematic:{
+    permit:function(){ swoosh(true,0,.7); thump(70,0,.6); fm(523,.06,.5,.4,2,1.5); },
+    roger:function(){ swoosh(false,0,.6); fm(392,.04,.45,.45,2,1.5); },
+    rxStart:function(){ swoosh(true,0,.45); },
+    rxEnd:function(){ swoosh(false,0,.4); thump(60,.05,.35); },
+    busy:function(){ thump(55,0,.9); thump(55,.2,.7); },
+    granted:function(){ fm(523,0,.6,.5,2,1.2); fm(784,.12,.6,.6,2,1.2); },
+    task:function(){ thump(65,0,.7); fm(659,.02,.65,.7,1.5,2); fm(988,.16,.6,.8,1.5,2); },
+    ok:function(){ fm(1046,0,.35,.35,2,1); },
+    tick:function(){ click(1800,0,.2); },
+    delivered:function(){ fm(1568,0,.18,.25,2,.8); },
+    drop:function(){ thump(60,0,.8); swoosh(false,0,.35); },
+    hazard:function(){ for(var i=0;i<3;i++){ thump(55,i*.55,.6); hold(622,.24,i*.55,.85); hold(466,.24,i*.55+.27,.85); } },
+    clear:function(){ fm(523,0,.5,.5,1.5,1.2); fm(784,.12,.5,.7,1.5,1.2); },
+    arm:function(){ for(var i=0;i<3;i++){ thump(60,i*.24,.6); hold(740,.1,i*.24,.7); } },
+    count:function(){ thump(70,0,.5); },
+    siren:function(){ thump(50,0,.9); hold(440,.9,0,.85,5,880); hold(880,.9,.9,.85,5,440); hold(440,.9,1.8,.85,5,880); },
+    cancel:function(){ swoosh(false,0,.5); fm(392,.03,.4,.45,2,1); },
+    mandown:function(){ for(var i=0;i<3;i++){ thump(55,i*.4,.7); hold(880,.2,i*.4,.85,8); } },
+    checkin:function(){ fm(523,0,.6,.6,1.5,1.5); fm(659,.14,.6,.6,1.5,1.5); fm(784,.28,.6,.9,1.5,1.5); },
+    offline:function(){ swoosh(false,0,.5); thump(50,.1,.6); },
+    online:function(){ swoosh(true,0,.5); fm(659,.08,.45,.5,2,1); },
+    lost:function(){ fm(523,0,.5,.5,1.4,2); fm(415,.16,.5,.5,1.4,2); fm(330,.32,.5,.8,1.4,2); },
+    escalate:function(){ for(var i=0;i<3;i++){ thump(60,i*.3,.6); hold(880,.12,i*.3,.8); hold(659,.12,i*.3+.15,.8); } },
+    video:function(){ swoosh(true,0,.5); fm(880,.08,.5,.5,2,1.2); }
+  }
 };
-function sfx(n){ try{ if(SFX[n]) SFX[n](); }catch(e){} }
+var SFX=PACKS_SND.pro;
+function sfx(n){ try{ var P=PACKS_SND[SND]||PACKS_SND.pro; if(P[n]) P[n](); }catch(e){} }
 function radioVoice(text,lang){
   if(!S.radioVoice||vol()===0) return;
   try{ if(!window.speechSynthesis) return; var u=new SpeechSynthesisUtterance(text); u.rate=1.08; u.pitch=0.9; u.volume=Math.min(1,vol()*1.6); if(lang) u.lang=lang; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
@@ -2079,7 +2216,18 @@ $('sumSend').onclick=function(){ closeBs(); var e=addLog('out','Handover summary
 $('scrim').onclick=function(){ if(!S.banner) closeBs(); };
 $('replay').onclick=function(){ closeBs(); clearIncoming(); closeVideo(); reset(S.pack,true); setSheet('peek'); renderAll(); setFollow(true); centerOn(S.me.x,S.me.y,false); schedule(); toast('Demo restarted','New assignment arrives in 6 s'); };
 $('btnReplay').onclick=startReplay;
-$('sndTest').onclick=function(){ var seq=[['permit',0],['roger',900],['rxStart',1900],['rxEnd',2600],['task',3600],['hazard',4800],['checkin',6400]]; seq.forEach(function(x){ setTimeout(function(){ sfx(x[0]); },x[1]); }); toast('Talk permit · roger beep · incoming · released · new task · hazard · check-in'); };
+var SND_LIST=[['permit','Start talking'],['roger','Stop talking'],['rxStart','Incoming'],['rxEnd','Incoming ends'],['busy','Channel busy'],['granted','Your turn'],['task','New task'],['checkin','Check-in'],['hazard','Hazard'],['mandown','Man-down'],['siren','SOS sent'],['escalate','Escalation'],['ok','Confirm'],['delivered','Delivered'],['offline','Offline']];
+function renderSndLab(){
+  if(!$('optSnd')) return;
+  $('optSnd').innerHTML=[['pro','Pro','Soft mallet tones'],['radio','Radio','Two-way radio'],['minimal','Minimal','Quiet clicks'],['cinematic','Cinematic','Deep and dramatic']].map(function(o){ return '<button data-sndset="'+o[0]+'" class="'+(SND===o[0]?'on':'')+'" aria-pressed="'+(SND===o[0])+'">'+o[1]+'<small>'+o[2]+'</small></button>'; }).join('');
+  $('sndLab').innerHTML=SND_LIST.map(function(x){ return '<button data-sndplay="'+x[0]+'">'+x[1]+'</button>'; }).join('');
+}
+document.addEventListener('click',function(e){ var b=e.target.closest('[data-sndset],[data-sndplay]'); if(!b) return; audio();
+  if(b.dataset.sndset){ SND=b.dataset.sndset; try{ localStorage.setItem('fl_snd',SND); }catch(_){} renderSndLab(); setTimeout(function(){ sfx('permit'); setTimeout(function(){ sfx('roger'); },500); },60); return; }
+  if(vol()===0){ toast('Sound is set to Silent','Pick Speaker or Earpiece above to hear it'); return; }
+  sfx(b.dataset.sndplay); });
+$('sndTest').onclick=function(){ var seq=[['permit',0],['roger',800],['rxStart',1700],['rxEnd',2400],['task',3300],['checkin',4600],['hazard',5900],['siren',7800]]; seq.forEach(function(x){ setTimeout(function(){ sfx(x[0]); },x[1]); }); toast('Start talking · stop · incoming · ends · new task · check-in · hazard · SOS'); };
+var _rsS=renderSettings; renderSettings=function(){ _rsS(); renderSndLab(); };
 $('btnFall').onclick=function(){ closeBs(); setTimeout(function(){ showManDown('FALL DETECTED · 2.8 g IMPACT'); },400); };
 $('reportBtn').onclick=function(){ openRadial(); };
 $('sosBtn').onclick=openSos;
@@ -2555,7 +2703,7 @@ function complete(id){
   playClip(id,String(m.cs).slice(0,24));
 }
 function playClip(id,who){
-  var c=CLIPS[id], a=audio(), out=bus(); if(!c||!a||!out) return;
+  var c=CLIPS[id], a=audio(), out=voiceBus(); if(!c||!a||!out) return;
   if(a.state==='suspended'){ toast('Tap the screen once to enable sound','Then press Play in the Log'); return; }
   if(vol()===0){ toast('Voice message from '+(who||'a device'),'Sound is off on this device · open Log to play it'); return; }
   try{ if(S.playing) S.playing.stop(); }catch(e){}
