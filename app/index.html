@@ -663,6 +663,7 @@ svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stro
 .phone[data-mode="brand"] .dock{border-top:0;box-shadow:0 -6px 20px rgba(60,10,20,.08)}
 .phone[data-mode="brand"] .inc .t,.phone[data-mode="brand"] .card h3,.phone[data-mode="brand"] .bs h2,.phone[data-mode="brand"] .banner h2,.phone[data-mode="brand"] .full h1,.phone[data-mode="brand"] .nowinfo .tt{letter-spacing:-.02em!important;font-weight:800!important}
 .phone[data-mode="brand"] .ptt{border-radius:999px!important}
+.phone[data-mode="brand"] .primary,.phone[data-mode="brand"] .secondary,.phone[data-mode="brand"] .go{font-size:16px!important;letter-spacing:-.02em!important;padding:0 10px}
 .phone[data-mode="brand"] .seg button{font-size:13.5px!important;letter-spacing:-.02em!important;padding:0 4px;min-width:0}
 .phone[data-mode="brand"] .seg button.on{background:#6B1027;color:#fff}
 .phone[data-mode="brand"] .seg{grid-auto-columns:auto;grid-template-columns:minmax(0,1.7fr) repeat(3,minmax(0,1fr))}
@@ -1063,7 +1064,7 @@ svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stro
     <h4>DEMO</h4>
     <div class="opt"><button id="tourBtn">Guided demo<small>3-minute walkthrough</small></button><button id="cmdrBtn">Commander view<small>board for the lead</small></button></div>
     <div class="opt"><button id="btnReplay">After-action replay<small>scrub the last minutes</small></button><button id="btnFall">Simulate a fall<small>man-down check</small></button></div>
-    <div class="opt"><button id="replay">Restart live events<small>task, radio, video, check-in</small></button></div>
+    <div class="opt"><button id="restartBtn">Restart live events<small>task, radio, video, check-in</small></button></div>
   </section>
 
   <section class="full cmd" id="cmd" aria-label="Voice command">
@@ -1593,13 +1594,13 @@ function frameAt(t){
 }
 function drawDyn(){
   var P=PACKS[S.pack], g=[], rp=S.replay;
-  var CLEAN=REAL&&SIM_OFF;
+  var CLEAN=SIM_OFF;
   if(!CLEAN){ g.push('<rect x="560" y="700" width="330" height="290" rx="6" fill="var(--accent)" fill-opacity=".05" stroke="var(--accent)" stroke-width="2" stroke-dasharray="14 9" opacity=".8"/>');
   g.push('<text x="572" y="724" font-family="IBM Plex Mono,monospace" font-size="14" font-weight="600" fill="var(--muted)" letter-spacing="1">'+esc(P.zone)+'</text>'); }
   if(!rp){ var mx=S.me.x,my=S.me.y; [100,200].forEach(function(r,i){ g.push('<circle cx="'+mx+'" cy="'+my+'" r="'+r+'" fill="none" stroke="var(--ok)" stroke-width="1.2" stroke-dasharray="4 6" opacity=".55"/><text x="'+(mx+r*0.71+4)+'" y="'+(my-r*0.71)+'" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="var(--ok)" opacity=".8">'+(r*M_PER_PX)+'M</text>'); });
     for(var a=0;a<360;a+=30){ var ra=a*Math.PI/180, r1=196, r2=a%90===0?212:204; g.push('<line x1="'+(mx+Math.sin(ra)*r1)+'" y1="'+(my-Math.cos(ra)*r1)+'" x2="'+(mx+Math.sin(ra)*r2)+'" y2="'+(my-Math.cos(ra)*r2)+'" stroke="var(--ok)" stroke-width="1.5" opacity=".6"/>'); }
     g.push('<text x="'+mx+'" y="'+(my-218)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="var(--ok)">N</text>'); }
-  if(S.layers.zones) S.zones.forEach(function(z){ if(rp&&z.sec>rp.t) return; if(REAL&&SIM_OFF&&z.id==='z0') return;
+  if(S.layers.zones) S.zones.forEach(function(z){ if(rp&&z.sec>rp.t) return; if(SIM_OFF&&z.id==='z0') return;
     g.push('<circle cx="'+z.x+'" cy="'+z.y+'" r="'+z.r+'" fill="var(--haz)" fill-opacity=".24" stroke="var(--haz)" stroke-width="4"/>');
     g.push('<text x="'+z.x+'" y="'+(z.y-z.r-8)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="13" font-weight="600" fill="var(--ink)" stroke="var(--map-bg)" stroke-width="4" paint-order="stroke">⚠ '+esc(z.label.toUpperCase())+'</text>');
   });
@@ -1608,7 +1609,7 @@ function drawDyn(){
     g.push('<path d="M'+p.x.toFixed(0)+' '+p.y.toFixed(0)+' L'+(d.cx-40)+' '+(d.cy-40)+' L'+(d.cx+40)+' '+(d.cy+40)+'Z" fill="var(--drone)" fill-opacity=".10"/>');
   });
   if(!rp){
-    if(S.layers.wind&&!(REAL&&SIM_OFF)){ var hz=PACKS[S.pack].hazard, to=(S.wind.from+180)*Math.PI/180, L=300, sp=0.32;
+    if(S.layers.wind&&!SIM_OFF){ var hz=PACKS[S.pack].hazard, to=(S.wind.from+180)*Math.PI/180, L=300, sp=0.32;
       var p1=[hz.x+Math.sin(to-sp)*L,hz.y-Math.cos(to-sp)*L], p2=[hz.x+Math.sin(to+sp)*L,hz.y-Math.cos(to+sp)*L], pm=[hz.x+Math.sin(to)*L*1.08,hz.y-Math.cos(to)*L*1.08];
       g.push('<path d="M'+hz.x+' '+hz.y+' L'+p1[0].toFixed(0)+' '+p1[1].toFixed(0)+' Q'+pm[0].toFixed(0)+' '+pm[1].toFixed(0)+' '+p2[0].toFixed(0)+' '+p2[1].toFixed(0)+'Z" fill="var(--warn)" fill-opacity=".10" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="8 6"/>');
       g.push('<text x="'+(hz.x+Math.sin(to)*L*0.62).toFixed(0)+'" y="'+(hz.y-Math.cos(to)*L*0.62).toFixed(0)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="var(--warn)" stroke="var(--map-bg)" stroke-width="4" paint-order="stroke">SMOKE PLUME · 15 MIN</text>'); }
@@ -1671,7 +1672,7 @@ function placeMarkers(){
   S.reports.forEach(function(r){ if(rp&&r.sec>rp.t) return; put('r'+r.id,'rep'+(r.drop&&!rp?' drop':'')+(r.log.rc==='queued'?' queued':''),icon(r.icon),r.x,r.y,'',r.label); r.drop=false; });
   S.cams.forEach(function(c){ if(rp&&c.sec>rp.t) return; put('c'+c.id,'cam',icon('cam'),c.x,c.y,'',c.label); });
   if(S.layers.drones) S.drones.forEach(function(d){ var p=fr?fr.drone:d; put('u'+d.id,'drone',icon('drone'),p.x,p.y,'',d.name+' · tap to watch'); });
-  if(!(REAL&&SIM_OFF)) S.team.forEach(function(m,n){
+  if(!SIM_OFF) S.team.forEach(function(m,n){
     var pos=fr?fr.team[n]:m, lost=fr?fr.team[n].lost:m.lost, talking=!rp&&S.floor&&S.floor.id===m.id;
     var label=lost?(rp?'LOST':'LOST '+fmtAge(m.age)):(rp?m.name:(S.sel===m.id||talking?m.name:''));
     put('m'+m.id,(lost?'stale':'')+(S.sel===m.id?' sel':'')+(talking?' talking':''),m.init,pos.x,pos.y,label,m.name+', '+m.role+(lost?', signal lost':''),m.floor>0?lvl(m.floor):'');
@@ -1683,7 +1684,7 @@ function placeMarkers(){
   S.cas.forEach(function(c,i){ put('x'+i,'cas '+c.tag,c.tag,c.x,c.y,'',{R:'Immediate',Y:'Delayed',G:'Minor',B:'Deceased'}[c.tag]+' casualty'); });
   S.evid.forEach(function(v){ put('v'+v.id,'cam ev',icon('cam'),v.x,v.y,'',v.label); });
   if(S.wpt) put('wpt','wp','',S.wpt.x,S.wpt.y,S.wpt.label,'Waypoint '+S.wpt.label);
-  if(!rp&&!(REAL&&SIM_OFF)) put('bld','bld',icon('layers'),588,742,'',PACKS[S.pack].bld.name+' · floors');
+  if(!rp&&!SIM_OFF) put('bld','bld',icon('layers'),588,742,'',PACKS[S.pack].bld.name+' · floors');
   Object.keys(mk).forEach(function(k){ if(!seen[k]){ mk[k].remove(); delete mk[k]; } });
   var me=$('meEl'); if(!me){ me=document.createElement('div'); me.id='meEl'; me.className='me'; me.innerHTML='<span class="acc"></span><span class="cone"></span><span class="core"></span>'; layer.appendChild(me); }
   var mp=fr?fr.me:S.me, p=scr(mp.x,mp.y); me.style.transform='translate('+p[0]+'px,'+p[1]+'px)';
@@ -1855,6 +1856,7 @@ function startCompose(i){
 }
 function endCompose(){ S.compose=null; phone.dataset.compose='0'; setTimeout(placeMarkers,340); }
 function sendCompose(){
+  if(!S.compose||!PACKS[S.pack].types[S.compose.type]) return;
   var P=PACKS[S.pack],t=P.types[S.compose.type],c=visibleCenter(),wx=(c[0]-view.tx)/view.s,wy=(c[1]-view.ty)/view.s,label=t.l+' · '+P.sevs[S.sev];
   var e=addLog('out','Reported '+label+' · '+fmtDist(dist(S.me,{x:wx,y:wy}))+' '+bearing(S.me,{x:wx,y:wy}));
   var r={id:e.id,x:wx,y:wy,icon:t.i,label:label,log:e,drop:true,sec:secs()}; S.reports.push(r);
@@ -2265,7 +2267,7 @@ $('lockRestore').onclick=function(){ $('lockv').classList.remove('on'); S.locked
 $('sumCopy').onclick=function(){ var t=$('sumText').innerText; try{ navigator.clipboard.writeText(t).then(function(){ toast('Summary copied'); },function(){ toast('Copy blocked here','Select the text and copy it instead'); }); }catch(e){ toast('Copy blocked here','Select the text and copy it instead'); } };
 $('sumSend').onclick=function(){ closeBs(); var e=addLog('out','Handover summary sent to incoming lead'); deliver(e); sfx('ok'); renderAll(); toast('Handover sent','They get the summary, open tasks and the live map'); };
 $('scrim').onclick=function(){ if(!S.banner) closeBs(); };
-$('replay').onclick=function(){ closeBs(); clearIncoming(); closeVideo(); reset(S.pack,true); setSheet('peek'); renderAll(); setFollow(true); centerOn(S.me.x,S.me.y,false); schedule(); toast('Demo restarted','New assignment arrives in 6 s'); };
+$('restartBtn').onclick=function(){ closeBs(); clearIncoming(); closeVideo(); reset(S.pack,true); setSheet('peek'); renderAll(); setFollow(true); centerOn(S.me.x,S.me.y,false); schedule(); toast('Demo restarted','New assignment arrives in 6 s'); };
 $('btnReplay').onclick=startReplay;
 var SND_LIST=[['permit','Start talking'],['roger','Stop talking'],['rxStart','Incoming'],['rxEnd','Incoming ends'],['busy','Channel busy'],['granted','Your turn'],['task','New task'],['checkin','Check-in'],['hazard','Hazard'],['mandown','Man-down'],['siren','SOS sent'],['escalate','Escalation'],['ok','Confirm'],['delivered','Delivered'],['offline','Offline']];
 function renderSndLab(){
@@ -2644,7 +2646,8 @@ function teamCode(){ return ORG?ORG.id:'solo'; }
 function p2pNet(){
   if(!ORG) return refreshLive();
   var code=teamCode(); NET.team=code;
-  import('https://esm.run/trystero@0.26.0').then(function(T){
+  var _imp=import('https://esm.run/trystero@0.26.0'), _to=new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); },9000); });
+  Promise.race([_imp,_to]).then(function(T){
     var cfg={appId:'fieldlink-hwezyrmas-v1'}; if(ORG.code) cfg.password=ORG.code;
     var room=T.joinRoom(cfg,'org-'+code), act=room.makeAction('fl'), csA=room.makeAction('cs');
     NET.p2p={room:room,act:act,cs:csA,names:{}}; NET.mode='p2p';
@@ -2653,7 +2656,7 @@ function p2pNet(){
     room.onPeerJoin=function(id){ csA.send({cs:CS,org:ORG.name||''},{target:id}); listP2P(); sfx('online'); toast((NET.p2p.names[id]||'A device')+' joined '+(ORG.name||ORG.id),'Hold the green button to talk'); setTimeout(function(){ var nm=NET.p2p&&NET.p2p.names[id]; if(nm){ addLog('sys',nm+' joined the organization'); renderAll(); } },1500); };
     room.onPeerLeave=function(id){ delete NET.p2p.names[id]; listP2P(); };
     refreshLive();
-  }).catch(function(){ localNet(); });
+  }).catch(function(){ localNet(); if(!NET.retry){ NET.retry=true; if(!NET.netWarned){ NET.netWarned=true; toast('Internet link not reachable','Working on this device only for now. Retrying in 30 s.'); } setTimeout(function(){ if(NET.mode==='local'||NET.mode==='none'){ try{ if(NET.bc) NET.bc.close(); }catch(e){} NET.bc=null; NET.mode='none'; NET.retry=false; p2pNet(); } },30000); } });
 }
 function listP2P(){ if(!NET.p2p) return; NET.list=Object.keys(NET.p2p.room.getPeers()).map(function(id){ return {cs:NET.p2p.names[id]||'',isMe:false}; }); refreshLive(); }
 function setupNet(){
@@ -2774,7 +2777,7 @@ function renderLiveSetup(){ var i=$('csIn'); if(i&&document.activeElement!==i) i
 $('csIn').addEventListener('change',function(){ var v=this.value.trim().slice(0,24); if(!v) return; CS=v; try{ localStorage.setItem('fl_cs',v); }catch(e){} if(NET.room) NET.room.presence({cs:CS}).catch(function(){}); if(NET.p2p) NET.p2p.cs.send({cs:CS,org:ORG&&ORG.name||''}).catch(function(){}); toast('Callsign: '+CS); });
 document.addEventListener('click',function(e){ var b=e.target.closest('[data-sim]'); if(!b) return; SIM_OFF=b.dataset.sim==='off'; try{ localStorage.setItem('fl_sim',SIM_OFF?'off':'on'); }catch(_){} if(ORG){ ORG.demo=!SIM_OFF; saveOrg(ORG); }
   renderLiveSetup();
-  if(SIM_OFF){ timeline.forEach(clearTimeout); timeline=[]; clearIncoming(); if(REAL){ S.tasks=[]; S.cur=null; S.zones=S.zones.filter(function(z){ return z.id!=='z0'; }); } renderAll(); toast('Demo crew off','Only real devices and what you create are shown'); }
+  if(SIM_OFF){ timeline.forEach(clearTimeout); timeline=[]; clearIncoming(); stripDemo(); renderAll(); toast('Demo crew off','Only real devices and what you create are shown'); }
   else { if(REAL){ var keepMe={x:S.me.x,y:S.me.y,h:S.me.h}; reset(S.pack,true); S.me.x=keepMe.x; S.me.y=keepMe.y; S.me.h=keepMe.h; S.layers.drones=false; setSheet('peek'); } renderAll(); schedule(); toast('Demo crew on','4 simulated people around you, with scripted tasks, radio and alerts'); } });
 function shareLink(){ return location.origin+location.pathname+'?org='+encodeURIComponent(ORG?ORG.id:''); }
 function copyText(t,msg){ try{ navigator.clipboard.writeText(t).then(function(){ toast(msg); },function(){ toast('Copy blocked','Select the text and copy it'); }); }catch(e){ toast('Copy blocked','Select the text and copy it'); } }
@@ -2806,7 +2809,7 @@ function loadMapLib(){ return new Promise(function(res,rej){ if(window.maplibreg
 function enableReal(){
   if(REAL) return; loadMapLib().then(function(){
     REAL=true; phone.classList.add('realmap'); S.layers.drones=false;
-    if(SIM_OFF){ S.tasks=[]; S.cur=null; S.reports=[]; S.zones=S.zones.filter(function(z){ return z.id!=='z0'; }); }
+    if(SIM_OFF) stripDemo();
     var c=ANCHOR||DEFAULT_CENTER;
     MAP=new maplibregl.Map({container:'gl',style:'https://tiles.openfreemap.org/styles/'+(S.mode==='brand'?'positron':'dark'),center:[c.lon,c.lat],zoom:17,attributionControl:false,dragRotate:false,pitchWithRotate:false,maxPitch:0});
     MAP._flSkin=S.mode==='brand'?'positron':'dark'; MAP.touchZoomRotate.disableRotation(); MAP.keyboard.disableRotation();
@@ -2863,11 +2866,12 @@ function renderGateOpts(){
   $('nPack').innerHTML=[['fire','Fire','& Rescue'],['security','Security','Events'],['utilities','Utilities','Field ops']].map(function(o){ return '<button type="button" data-gpack="'+o[0]+'" class="'+(GATE.pack===o[0]?'on':'')+'">'+o[1]+'<small>'+o[2]+'</small></button>'; }).join('');
 }
 function showGate(){ renderSkinSw(); var q=new URLSearchParams(location.search), inv=normId(q.get('org')||q.get('team')||''); if(inv) $('gOrg').value=inv; $('gCs').value=$('gCs').value||(CS.indexOf('Unit ')===0?'':CS); renderGateOpts(); gateTab(inv||!ORG?'join':'join'); $('gate').classList.add('on'); }
+function stripDemo(){ S.tasks=[]; S.cur=null; S.reports=[]; S.zones=S.zones.filter(function(z){ return z.id!=='z0'; }); S.log=S.log.filter(function(e){ return e.kind==='live'||e.real; }); }
 function enterOrg(o,role,pack,created){
   saveOrg(o); CS=o.cs; try{ localStorage.setItem('fl_cs',CS); }catch(e){}
   $('gate').classList.remove('on');
   SIM_OFF=!o.demo; try{ localStorage.setItem('fl_sim',SIM_OFF?'off':'on'); }catch(e){}
-  reset(pack||S.pack,true); S.role=role; setSheet('peek'); renderAll(); setFollow(true); centerOn(S.me.x,S.me.y,false); timeline.forEach(clearTimeout); timeline=[];
+  reset(pack||S.pack,true); if(SIM_OFF) stripDemo(); S.role=role; setSheet('peek'); renderAll(); setFollow(true); centerOn(S.me.x,S.me.y,false); timeline.forEach(clearTimeout); timeline=[];
   if(o.demo) schedule();
   if(history.replaceState){ try{ history.replaceState(null,'',location.pathname+'?org='+o.id+location.hash); }catch(e){} }
   p2pNet(); renderOrg(); sfx('ok'); enableReal();
@@ -2891,13 +2895,30 @@ buildWave($('pttWave'),14); buildWave($('flWave'),12); buildTape();
 reset('fire'); drawWorld(); renderAll(); setSheet('peek'); centerOn(S.me.x,S.me.y-30,false); schedule(); $('windc').classList.add('on');
 ORG=loadOrg();
 (function(){ var q=new URLSearchParams(location.search), inv=normId(q.get('org')||q.get('team')||'');
-  if(ORG&&(!inv||inv===ORG.id)){ CS=ORG.cs||CS; setupNet(); renderOrg(); setTimeout(enableReal,50); }
+  if(ORG&&(!inv||inv===ORG.id)){ CS=ORG.cs||CS; if(SIM_OFF){ timeline.forEach(clearTimeout); timeline=[]; stripDemo(); renderAll(); } setupNet(); renderOrg(); setTimeout(enableReal,50); }
   else if(location.hash==='#tour'||location.hash==='#command'){ ORG=null; renderOrg(); }
   else { if(inv&&ORG&&inv!==ORG.id) ORG=null; timeline.forEach(clearTimeout); timeline=[]; showGate(); }
 })();
 if(location.hash==='#tour') setTimeout(startTour,600); else if(location.hash==='#command') setTimeout(function(){ setView('cmdr'); },400);
 })();
 try{ var _m0=localStorage.getItem('fl_mode'); if(_m0&&_m0!=='blackout'){ document.getElementById('phone').dataset.mode=_m0; if(typeof S!=='undefined'&&S) S.mode=_m0; } renderSkinSw(); }catch(e){ console.warn('skin',e); }
+
+/* ---------- STABILITY: resume after sleep, keep screen awake, connectivity notices ---------- */
+(function(){
+  var WL=null;
+  function wake(){ try{ if(navigator.wakeLock&&document.visibilityState==='visible'&&!WL) navigator.wakeLock.request('screen').then(function(l){ WL=l; l.addEventListener('release',function(){ WL=null; }); }).catch(function(){}); }catch(e){} }
+  document.addEventListener('pointerdown',function f(){ document.removeEventListener('pointerdown',f); wake(); });
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState!=='visible') return;
+    try{ if(typeof AC!=='undefined'&&AC&&AC.state!=='running') AC.resume(); }catch(e){}
+    try{ if(typeof GPS!=='undefined'&&GPS&&GPS.watch&&typeof startGPS==='function') startGPS(true); }catch(e){}
+    try{ if(typeof MAP!=='undefined'&&MAP&&MAP.resize) MAP.resize(); }catch(e){}
+    wake();
+  });
+  window.addEventListener('offline',function(){ try{ toast('Phone lost internet','Voice and reports wait on the device and send when it returns'); }catch(e){} });
+  window.addEventListener('online',function(){ try{ toast('Internet back','Reconnecting to your organization'); if(typeof NET!=='undefined'&&(NET.mode==='local'||NET.mode==='none')&&typeof p2pNet==='function'&&typeof ORG!=='undefined'&&ORG){ try{ if(NET.bc) NET.bc.close(); }catch(e){} NET.bc=null; NET.mode='none'; p2pNet(); } }catch(e){} });
+  window.addEventListener('error',function(e){ try{ console.warn('Fieldlink recovered from:',e.message); }catch(_){} });
+})();
 </script>
 </body>
 </html>
