@@ -20,9 +20,13 @@ Notes:
 - Some corporate or carrier networks block peer-to-peer connections. If phones don't see each other, try both on mobile data or the same Wi-Fi.
 - Anyone who knows a team code can join it. Use an unguessable code for anything private.
 
+## Real map and live location
+
+Inside an organization the app switches to a real street map ([MapLibre GL JS](https://maplibre.org) 5.24, bundled in `app/vendor/`, with the free [OpenFreeMap](https://openfreemap.org) dark style; map data © OpenStreetMap contributors). Your GPS position and every other device's position in the organization appear live, with callsigns, accuracy and age. Allow location when the browser asks.
+
 ## What's simulated
 
-Map data, positions, sensors (air, heart rate, gas), drone and body-cam video, translation and network conditions are simulated for the demo. Live voice between devices is real.
+Outside an organization (the solo demo and guided tour): map data, positions, sensors (air, heart rate, gas), drone and body-cam video, translation and network conditions are simulated for the demo. Live voice between devices is real.
 
 ## Hosting
 

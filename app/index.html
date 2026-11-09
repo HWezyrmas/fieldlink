@@ -6,6 +6,7 @@
 <title>Fieldlink · Field app</title>
 <meta name="theme-color" content="#0E1013">
 <link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -622,6 +623,24 @@ svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stro
 .chan .dotlive.live{background:var(--talk);box-shadow:0 0 0 4px rgba(47,191,113,.25)}
 .ptt .livetag{position:absolute;left:12px;top:6px;font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.06em;opacity:.9;display:none}
 .ptt.livemode .livetag{display:block}
+/* ======== REAL MAP ======== */
+.gl{position:absolute;inset:0;display:none}
+.realmap .gl{display:block}
+.realmap #base,.realmap .gx,.realmap .gy,.realmap .scan{display:none}
+.realmap svg.world{pointer-events:none}
+.realmap .map{cursor:default}
+.phone[data-mode="night"] .gl{filter:grayscale(1) sepia(1) saturate(5) hue-rotate(-48deg) brightness(.5)}
+.phone[data-mode="hud"] .gl{filter:brightness(.92) contrast(1.05)}
+.gl .maplibregl-ctrl-attrib{font-size:10px;background:rgba(14,16,19,.75)!important;color:#9BA3AB}
+.gl .maplibregl-ctrl-attrib a{color:#C9D1D9}
+.gl .maplibregl-ctrl-attrib-button{filter:invert(1)}
+.mk.peer .dot{border-color:var(--ok)!important;color:var(--ok)!important;background:rgba(14,16,19,.92)!important}
+.mk.peer .tag{border-color:var(--ok)!important}
+.mk.peer.stale .dot{border-style:dashed!important;color:var(--muted)!important;border-color:var(--muted)!important}
+.me .acc{transition:width .4s,height .4s,left .4s,top .4s}
+.gpsnote{position:absolute;left:12px;right:12px;top:8px;z-index:4;display:none;padding:8px 10px;border-radius:10px;background:rgba(14,16,19,.92);border:1px solid var(--line);font-size:12.5px;color:var(--muted);line-height:1.35}
+.gpsnote.on{display:block}
+.gpsnote button{margin-left:6px;border:0;background:none;color:var(--accent);font-weight:700;padding:0}
 /* ======== SIGN-IN GATE ======== */
 .gate{position:absolute;inset:0;z-index:95;background:var(--bg);overflow-y:auto;display:none}
 .gate.on{display:block}
@@ -738,12 +757,14 @@ svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stro
   </header>
 
   <main class="map" id="map" aria-label="Map. Drag to pan, pinch or scroll to zoom, long-press to report at a spot">
+    <div class="gl" id="gl" aria-label="Street map"></div>
     <svg class="world" id="world" xmlns="http://www.w3.org/2000/svg"></svg>
     <div class="scan" aria-hidden="true"></div>
     <div class="gx" id="gx" aria-hidden="true"></div><div class="gy" id="gy" aria-hidden="true"></div>
     <div class="brk" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     <div class="layer" id="layer"></div>
     <div class="cross" id="cross"><span></span></div>
+    <div class="gpsnote" id="gpsNote"></div>
   </main>
   <div class="strip" id="strip" aria-label="Position and heading">
     <span><em>MGRS</em><b id="sMgrs">40R CR 41580 88420</b></span>
@@ -1330,7 +1351,7 @@ function drawWorld(){
   var dA=clipHalf(root,dn,dk-19,1), dB=clipHalf(root,dn,dk+19,-1);
   ARTS.push({d:0,n:dn,k:dk,p:root,w:38});
   split(dA,1,0.07); split(dB,1,0.52);
-  out.push('<rect x="-400" y="-400" width="'+(W+800)+'" height="'+(H+800)+'" fill="var(--road)"/>');
+  out.push('<g id="base"><rect x="-400" y="-400" width="'+(W+800)+'" height="'+(H+800)+'" fill="var(--road)"/>');
   var g=[], bld=[], bld2=[];
   blocks.forEach(function(bk){
     var p=bk.p, th=bk.th, c=polyCent(p); if(Math.abs(c[1]-creekY(c[0]))<95) return;
@@ -1375,7 +1396,7 @@ function drawWorld(){
   var gl=''; for(var gxv=0;gxv<=W;gxv+=200) gl+='M'+gxv+' -200V'+(H+200); for(var gyv=0;gyv<=H;gyv+=200) gl+='M-200 '+gyv+'H'+(W+200);
   out.push('<path d="'+gl+'" stroke="var(--grid)" stroke-width="1.5" fill="none"/>');
   out.push('<text x="'+(W-8)+'" y="'+(H-8)+'" text-anchor="end" font-family="Barlow,system-ui,sans-serif" font-size="11" fill="var(--label)" opacity=".7">Simulated map data</text>');
-  out.push('<g id="dyn"></g>');
+  out.push('</g><g id="dyn"></g>');
   $('world').innerHTML=resolveVars(out.join('')); $('world').setAttribute('width',W); $('world').setAttribute('height',H);
 }
 function pointIn(p,x,y){ var c=false; for(var i=0,j=p.length-1;i<p.length;j=i++){ if(((p[i][1]>y)!==(p[j][1]>y))&&(x<(p[j][0]-p[i][0])*(y-p[i][1])/(p[j][1]-p[i][1])+p[i][0])) c=!c; } return c; }
@@ -1386,12 +1407,13 @@ function frameAt(t){
 }
 function drawDyn(){
   var P=PACKS[S.pack], g=[], rp=S.replay;
-  g.push('<rect x="560" y="700" width="330" height="290" rx="6" fill="var(--accent)" fill-opacity=".05" stroke="var(--accent)" stroke-width="2" stroke-dasharray="14 9" opacity=".8"/>');
-  g.push('<text x="572" y="724" font-family="IBM Plex Mono,monospace" font-size="14" font-weight="600" fill="var(--muted)" letter-spacing="1">'+esc(P.zone)+'</text>');
+  var CLEAN=REAL&&SIM_OFF;
+  if(!CLEAN){ g.push('<rect x="560" y="700" width="330" height="290" rx="6" fill="var(--accent)" fill-opacity=".05" stroke="var(--accent)" stroke-width="2" stroke-dasharray="14 9" opacity=".8"/>');
+  g.push('<text x="572" y="724" font-family="IBM Plex Mono,monospace" font-size="14" font-weight="600" fill="var(--muted)" letter-spacing="1">'+esc(P.zone)+'</text>'); }
   if(!rp){ var mx=S.me.x,my=S.me.y; [100,200].forEach(function(r,i){ g.push('<circle cx="'+mx+'" cy="'+my+'" r="'+r+'" fill="none" stroke="var(--ok)" stroke-width="1.2" stroke-dasharray="4 6" opacity=".55"/><text x="'+(mx+r*0.71+4)+'" y="'+(my-r*0.71)+'" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="var(--ok)" opacity=".8">'+(r*M_PER_PX)+'M</text>'); });
     for(var a=0;a<360;a+=30){ var ra=a*Math.PI/180, r1=196, r2=a%90===0?212:204; g.push('<line x1="'+(mx+Math.sin(ra)*r1)+'" y1="'+(my-Math.cos(ra)*r1)+'" x2="'+(mx+Math.sin(ra)*r2)+'" y2="'+(my-Math.cos(ra)*r2)+'" stroke="var(--ok)" stroke-width="1.5" opacity=".6"/>'); }
     g.push('<text x="'+mx+'" y="'+(my-218)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="var(--ok)">N</text>'); }
-  if(S.layers.zones) S.zones.forEach(function(z){ if(rp&&z.sec>rp.t) return;
+  if(S.layers.zones) S.zones.forEach(function(z){ if(rp&&z.sec>rp.t) return; if(REAL&&SIM_OFF&&z.id==='z0') return;
     g.push('<circle cx="'+z.x+'" cy="'+z.y+'" r="'+z.r+'" fill="var(--haz)" fill-opacity=".24" stroke="var(--haz)" stroke-width="4"/>');
     g.push('<text x="'+z.x+'" y="'+(z.y-z.r-8)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="13" font-weight="600" fill="var(--ink)" stroke="var(--map-bg)" stroke-width="4" paint-order="stroke">⚠ '+esc(z.label.toUpperCase())+'</text>');
   });
@@ -1400,7 +1422,7 @@ function drawDyn(){
     g.push('<path d="M'+p.x.toFixed(0)+' '+p.y.toFixed(0)+' L'+(d.cx-40)+' '+(d.cy-40)+' L'+(d.cx+40)+' '+(d.cy+40)+'Z" fill="var(--drone)" fill-opacity=".10"/>');
   });
   if(!rp){
-    if(S.layers.wind){ var hz=PACKS[S.pack].hazard, to=(S.wind.from+180)*Math.PI/180, L=300, sp=0.32;
+    if(S.layers.wind&&!(REAL&&SIM_OFF)){ var hz=PACKS[S.pack].hazard, to=(S.wind.from+180)*Math.PI/180, L=300, sp=0.32;
       var p1=[hz.x+Math.sin(to-sp)*L,hz.y-Math.cos(to-sp)*L], p2=[hz.x+Math.sin(to+sp)*L,hz.y-Math.cos(to+sp)*L], pm=[hz.x+Math.sin(to)*L*1.08,hz.y-Math.cos(to)*L*1.08];
       g.push('<path d="M'+hz.x+' '+hz.y+' L'+p1[0].toFixed(0)+' '+p1[1].toFixed(0)+' Q'+pm[0].toFixed(0)+' '+pm[1].toFixed(0)+' '+p2[0].toFixed(0)+' '+p2[1].toFixed(0)+'Z" fill="var(--warn)" fill-opacity=".10" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="8 6"/>');
       g.push('<text x="'+(hz.x+Math.sin(to)*L*0.62).toFixed(0)+'" y="'+(hz.y-Math.cos(to)*L*0.62).toFixed(0)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="var(--warn)" stroke="var(--map-bg)" stroke-width="4" paint-order="stroke">SMOKE PLUME · 15 MIN</text>'); }
@@ -1417,7 +1439,7 @@ function drawDyn(){
     if(F.length>1){ g.push('<polyline points="'+F.map(function(f){return f.me.x.toFixed(0)+','+f.me.y.toFixed(0);}).join(' ')+'" fill="none" stroke="var(--team)" stroke-width="4" opacity=".9"/>');
       for(var n=0;n<S.team.length;n++) g.push('<polyline points="'+F.map(function(f){return f.team[n].x.toFixed(0)+','+f.team[n].y.toFixed(0);}).join(' ')+'" fill="none" stroke="var(--team)" stroke-width="2.5" stroke-dasharray="1 6" stroke-linecap="round" opacity=".55"/>'); }
   } else {
-    if(S.layers.trails) S.team.forEach(function(m){ if(m.trail.length>1) g.push('<polyline points="'+m.trail.map(function(p){return p[0].toFixed(0)+','+p[1].toFixed(0);}).join(' ')+'" fill="none" stroke="var(--team)" stroke-width="3" stroke-dasharray="1 8" stroke-linecap="round" opacity=".55"/>'); });
+    if(S.layers.trails&&!CLEAN) S.team.forEach(function(m){ if(m.trail.length>1) g.push('<polyline points="'+m.trail.map(function(p){return p[0].toFixed(0)+','+p[1].toFixed(0);}).join(' ')+'" fill="none" stroke="var(--team)" stroke-width="3" stroke-dasharray="1 8" stroke-linecap="round" opacity=".55"/>'); });
     if(S.egress){ var ep=S.egress.path.slice(S.egress.i); ep.unshift([S.me.x,S.me.y]); g.push('<polyline points="'+ep.map(function(q){return q[0].toFixed(0)+','+q[1].toFixed(0);}).join(' ')+'" fill="none" stroke="var(--ok)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 12"/>'); var en=PACKS[S.pack].entry; g.push('<circle cx="'+en.x+'" cy="'+en.y+'" r="14" fill="var(--ok)"/><text x="'+(en.x+20)+'" y="'+(en.y+5)+'" font-family="IBM Plex Mono,monospace" font-size="13" font-weight="600" fill="var(--ok)" stroke="var(--map-bg)" stroke-width="4" paint-order="stroke">EXIT · '+esc(en.label.split(' · ')[0].toUpperCase())+'</text>'); }
     var t=curTask(); if(!S.egress&&t&&t.st!=='done') g.push('<line x1="'+S.me.x+'" y1="'+S.me.y+'" x2="'+t.x+'" y2="'+t.y+'" stroke="var(--accent)" stroke-width="'+(t.st==='enroute'?6:3)+'" stroke-dasharray="'+(t.st==='enroute'?'0':'10 8')+'" stroke-linecap="round"/>');
   }
@@ -1434,9 +1456,10 @@ function gridLabels(){
   $('gx').innerHTML=gx.join(''); $('gy').innerHTML=gy.join('');
 }
 function buildTape(){ var h=[]; for(var d=-180;d<=540;d+=5){ var px=(d+180)*3, n=((d%360)+360)%360; h.push('<i class="tk '+(n%10===0?'M':'m')+'" style="left:'+px+'px"></i>'); if(n%30===0){ var l=n===0?'N':n===90?'E':n===180?'S':n===270?'W':('00'+n).slice(-3); h.push('<span class="lb'+(n%90===0?' c':'')+'" style="left:'+px+'px">'+l+'</span>'); } } $('tapeIn').innerHTML=h.join(''); }
-function updateTape(){ var hd=((S.me.h%360)+360)%360, w=$('tape').clientWidth; $('tapeIn').style.transform='translateX('+(w/2-(hd+180)*3)+'px)';
+function updateTape(){ var hd=((S.me.h%360)+360)%360, w=$('tape').clientWidth;
+  if(REAL&&GPS.fix){ var em=$('sMgrs').previousElementSibling; if(em) em.textContent='POS'; } $('tapeIn').style.transform='translateX('+(w/2-(hd+180)*3)+'px)';
   var t=curTask(); if(t&&t.st!=='done'){ var b=(Math.atan2(t.x-S.me.x,S.me.y-t.y)*180/Math.PI+360)%360, rel=((b-hd+540)%360)-180; var bx=w/2+rel*3; $('tapeBug').style.display=(bx>0&&bx<w)?'':'none'; $('tapeBug').style.left=bx+'px'; } else $('tapeBug').style.display='none';
-  var d=new Date(); $('sMgrs').textContent=mgrs(S.me.x,S.me.y); $('sHdg').textContent=('00'+Math.round(hd)).slice(-3)+'°'; $('sLvl').textContent=lvl(S.me.floor); $('sZ').textContent=pad(d.getUTCHours())+pad(d.getUTCMinutes())+'Z'; }
+  var d=new Date(); $('sMgrs').textContent=(REAL&&GPS.fix)?GPS.lat.toFixed(5)+', '+GPS.lon.toFixed(5):mgrs(S.me.x,S.me.y); $('sHdg').textContent=('00'+Math.round(hd)).slice(-3)+'°'; $('sLvl').textContent=lvl(S.me.floor); $('sZ').textContent=pad(d.getUTCHours())+pad(d.getUTCMinutes())+'Z'; }
 function scr(x,y){ return [x*view.s+view.tx,y*view.s+view.ty]; }
 function mapSize(){ var r=$('map').getBoundingClientRect(); return {w:r.width,h:r.height}; }
 function visibleCenter(){ var ms=mapSize(); var cover=S.compose?$('compose').offsetHeight:S.replay?$('replay').offsetHeight:peekH(); return [ms.w/2,(ms.h-cover)/2]; }
@@ -1462,20 +1485,23 @@ function placeMarkers(){
   S.reports.forEach(function(r){ if(rp&&r.sec>rp.t) return; put('r'+r.id,'rep'+(r.drop&&!rp?' drop':'')+(r.log.rc==='queued'?' queued':''),icon(r.icon),r.x,r.y,'',r.label); r.drop=false; });
   S.cams.forEach(function(c){ if(rp&&c.sec>rp.t) return; put('c'+c.id,'cam',icon('cam'),c.x,c.y,'',c.label); });
   if(S.layers.drones) S.drones.forEach(function(d){ var p=fr?fr.drone:d; put('u'+d.id,'drone',icon('drone'),p.x,p.y,'',d.name+' · tap to watch'); });
-  S.team.forEach(function(m,n){
+  if(!(REAL&&SIM_OFF)) S.team.forEach(function(m,n){
     var pos=fr?fr.team[n]:m, lost=fr?fr.team[n].lost:m.lost, talking=!rp&&S.floor&&S.floor.id===m.id;
     var label=lost?(rp?'LOST':'LOST '+fmtAge(m.age)):(rp?m.name:(S.sel===m.id||talking?m.name:''));
     put('m'+m.id,(lost?'stale':'')+(S.sel===m.id?' sel':'')+(talking?' talking':''),m.init,pos.x,pos.y,label,m.name+', '+m.role+(lost?', signal lost':''),m.floor>0?lvl(m.floor):'');
   });
   S.agencies.forEach(function(a){ put('g'+a.id,'agency',a.init,a.x,a.y,S.sel===a.id?a.name:'',a.name+' · '+a.agency); });
+  if(REAL&&!rp) Object.keys(PEERPOS).forEach(function(k){ var q=PEERPOS[k], age=Math.round((Date.now()-q.rt)/1000); if(age>600) return; var w=toWorld(q.lat,q.lon); q.x=w.x; q.y=w.y;
+    put('p'+k,'peer'+(age>45?' stale':''),esc(String(q.cs||'??').slice(0,2).toUpperCase()),w.x,w.y,String(q.cs||'Device').slice(0,18)+(age>45?' · '+fmtAge(age):''),String(q.cs||'Device')+', live position, '+(age<5?'just now':age+' seconds ago')); });
   if(S.layers.tak) S.tak.forEach(function(k){ put('k'+k.id,'tak',k.init,k.x,k.y,S.sel===k.id?k.name:'TAK',k.name+' · via TAK'); });
   S.cas.forEach(function(c,i){ put('x'+i,'cas '+c.tag,c.tag,c.x,c.y,'',{R:'Immediate',Y:'Delayed',G:'Minor',B:'Deceased'}[c.tag]+' casualty'); });
   S.evid.forEach(function(v){ put('v'+v.id,'cam ev',icon('cam'),v.x,v.y,'',v.label); });
   if(S.wpt) put('wpt','wp','',S.wpt.x,S.wpt.y,S.wpt.label,'Waypoint '+S.wpt.label);
-  if(!rp) put('bld','bld',icon('layers'),588,742,'',PACKS[S.pack].bld.name+' · floors');
+  if(!rp&&!(REAL&&SIM_OFF)) put('bld','bld',icon('layers'),588,742,'',PACKS[S.pack].bld.name+' · floors');
   Object.keys(mk).forEach(function(k){ if(!seen[k]){ mk[k].remove(); delete mk[k]; } });
   var me=$('meEl'); if(!me){ me=document.createElement('div'); me.id='meEl'; me.className='me'; me.innerHTML='<span class="acc"></span><span class="cone"></span><span class="core"></span>'; layer.appendChild(me); }
-  var mp=fr?fr.me:S.me, p=scr(mp.x,mp.y); me.style.transform='translate('+p[0]+'px,'+p[1]+'px)'; me.querySelector('.cone').style.transform='rotate('+S.me.h+'deg)'; me.querySelector('.core').style.transform='rotate('+S.me.h+'deg)'; updateTape();
+  var mp=fr?fr.me:S.me, p=scr(mp.x,mp.y); me.style.transform='translate('+p[0]+'px,'+p[1]+'px)';
+  if(REAL&&GPS.acc){ var rpx=Math.max(14,Math.min(400,GPS.acc/M_PER_PX*view.s)), ac=me.querySelector('.acc'); ac.style.width=ac.style.height=(rpx*2)+'px'; ac.style.left=ac.style.top=(-rpx)+'px'; ac.style.animation='none'; } me.querySelector('.cone').style.transform='rotate('+S.me.h+'deg)'; me.querySelector('.core').style.transform='rotate('+S.me.h+'deg)'; updateTape();
   var cc=visibleCenter(); $('cross').style.left=cc[0]+'px'; $('cross').style.top=cc[1]+'px';
 }
 function fmtAge(s){ return s<60?s+'s':Math.floor(s/60)+'m'+pad(s%60); }
@@ -1484,22 +1510,25 @@ function fmtAge(s){ return s<60?s+'s':Math.floor(s/60)+'m'+pad(s%60); }
   var map=$('map'),pts={},last=null,pinch=null,lp=null,moved=0,down=null;
   map.addEventListener('pointerdown',function(e){
     if(e.target.closest('.mk')) return;
+    if(REAL){ moved=0; down=[e.clientX,e.clientY]; last=[e.clientX,e.clientY]; clearTimeout(lp); if(!S.compose&&!S.replay&&!S.tool) lp=setTimeout(function(){ if(moved<10){ var r=map.getBoundingClientRect(); haptic(40,'TICK'); openRadial((down[0]-r.left-view.tx)/view.s,(down[1]-r.top-view.ty)/view.s); } },550); return; }
     map.setPointerCapture(e.pointerId); pts[e.pointerId]=[e.clientX,e.clientY]; var ids=Object.keys(pts);
     if(ids.length===1){ last=[e.clientX,e.clientY]; moved=0; down=[e.clientX,e.clientY]; clearTimeout(lp);
       if(!S.compose&&!S.replay&&!S.tool) lp=setTimeout(function(){ if(moved<10){ var r=map.getBoundingClientRect(); haptic(40,'TICK'); openRadial((down[0]-r.left-view.tx)/view.s,(down[1]-r.top-view.ty)/view.s); } },550);
     } else if(ids.length===2){ clearTimeout(lp); var a=pts[ids[0]],b=pts[ids[1]]; pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1])}; }
   });
   map.addEventListener('pointermove',function(e){
+    if(REAL){ if(last){ moved+=Math.abs(e.clientX-last[0])+Math.abs(e.clientY-last[1]); last=[e.clientX,e.clientY]; if(moved>10) clearTimeout(lp); } return; }
     if(!pts[e.pointerId]) return; pts[e.pointerId]=[e.clientX,e.clientY]; var ids=Object.keys(pts);
     if(ids.length===2&&pinch){ var a=pts[ids[0]],b=pts[ids[1]],d=Math.hypot(a[0]-b[0],a[1]-b[1]),r=map.getBoundingClientRect(); zoomAt(d/pinch.d,(a[0]+b[0])/2-r.left,(a[1]+b[1])/2-r.top); pinch.d=d; moved=99; return; }
     if(last){ var dx=e.clientX-last[0],dy=e.clientY-last[1]; moved+=Math.abs(dx)+Math.abs(dy);
       if(moved>6){ map.classList.add('drag'); view.tx+=dx; view.ty+=dy; applyView(); if(S.follow&&!S.compose) setFollow(false); }
       last=[e.clientX,e.clientY]; }
   });
-  function up(e){ delete pts[e.pointerId]; clearTimeout(lp); if(Object.keys(pts).length<2) pinch=null;
+  function up(e){ if(REAL){ clearTimeout(lp); if(last&&!e.target.closest('.mk')&&moved<6){ var rr=map.getBoundingClientRect(); if(S.tool) toolTap((e.clientX-rr.left-view.tx)/view.s,(e.clientY-rr.top-view.ty)/view.s); else if(S.sel&&!S.compose){ S.sel=null; renderAll(); } } last=null; return; }
+    delete pts[e.pointerId]; clearTimeout(lp); if(Object.keys(pts).length<2) pinch=null;
     if(!Object.keys(pts).length){ last=null; map.classList.remove('drag'); if(moved<6&&S.tool&&!e.target.closest('.mk')){ var rr=map.getBoundingClientRect(); toolTap((e.clientX-rr.left-view.tx)/view.s,(e.clientY-rr.top-view.ty)/view.s); } else if(moved<6&&S.sel&&!S.compose){ S.sel=null; renderAll(); } } }
   map.addEventListener('pointerup',up); map.addEventListener('pointercancel',up);
-  map.addEventListener('wheel',function(e){ e.preventDefault(); var r=map.getBoundingClientRect(); zoomAt(e.deltaY<0?1.12:1/1.12,e.clientX-r.left,e.clientY-r.top); },{passive:false});
+  map.addEventListener('wheel',function(e){ if(REAL) return; e.preventDefault(); var r=map.getBoundingClientRect(); zoomAt(e.deltaY<0?1.12:1/1.12,e.clientX-r.left,e.clientY-r.top); },{passive:false});
   map.addEventListener('contextmenu',function(e){ e.preventDefault(); });
   $('layer').addEventListener('click',function(e){
     var b=e.target.closest('.mk'); if(!b||S.replay) return; var k=b.dataset.key;
@@ -1508,6 +1537,7 @@ function fmtAge(s){ return s<60?s+'s':Math.floor(s/60)+'m'+pad(s%60); }
     else if(k==='task'){ setSheet('half'); S.tab='tasks'; renderAll(); }
     else if(k[0]==='u'){ openVideo('drone',{name:'Drone 1'}); }
     else if(k==='bld'){ openBs('xsSheet'); }
+    else if(k[0]==='p'&&PEERPOS[k.slice(1)]){ var q=PEERPOS[k.slice(1)], ag=Math.round((Date.now()-q.rt)/1000); toast(String(q.cs||'Device').slice(0,24)+' · '+fmtDist(dist(S.me,q))+' '+bearing(S.me,q),'Live GPS ±'+Math.round(q.acc||0)+' m · updated '+(ag<5?'just now':fmtAge(ag)+' ago')); }
     else if(k[0]==='v'){ var ev=S.evid.filter(function(x){return 'v'+x.id===k;})[0]; if(ev){ S.evShow=ev; openBs('evSheet'); } }
     else if(k[0]==='k'){ var tk=S.tak.filter(function(x){return 'k'+x.id===k;})[0]; if(tk) toast(tk.name,'TAK user · '+tk.role+' · '+fmtDist(dist(S.me,tk))+' '+bearing(S.me,tk)); }
     else if(k[0]==='x'){ var ci=+k.slice(1); var c=S.cas[ci]; toast('Casualty · '+{R:'Immediate',Y:'Delayed',G:'Minor',B:'Deceased'}[c.tag],'Tagged at '+c.time+' · '+mgrs(c.x,c.y)); }
@@ -1574,7 +1604,7 @@ function renderBody(){
     S.tasks.forEach(function(t){ var cur=t.id===S.cur&&t.st!=='done';
       h.push('<button class="card'+(cur?' cur':'')+'" data-task="'+t.id+'"><div class="top"><h3>'+esc(t.title)+'</h3><span class="pill '+(cur?'hot':t.st==='done'?'dim':t.st==='assigned'?'':'solid')+'">'+(cur?'NEXT':STEP_LBL[t.st])+'</span></div><div class="sub">'+esc(t.where)+' · '+fmtDist(dist(S.me,t))+' '+bearing(S.me,t)+'</div></button>'); });
   } else if(S.tab==='team'){
-    if(NET.list.length) h.push('<div class="kick">LIVE DEVICES · REAL VOICE</div>'+NET.list.map(function(d){ return '<div class="mrow"><span class="av" style="background:var(--talk);color:var(--on-talk)">'+esc((d.cs||'??').slice(0,2).toUpperCase())+'</span><span class="who"><b>'+esc(d.cs||'Unnamed device')+'</b><span>'+(d.isMe?'Your other tab or device':'Connected now')+'</span></span><span class="r"><span class="pill solid">LIVE</span></span></div>'; }).join(''));
+    if(NET.list.length) h.push('<div class="kick">LIVE DEVICES · REAL VOICE AND LOCATION</div>'+NET.list.map(function(d){ var q=null; Object.keys(PEERPOS).forEach(function(k){ if(PEERPOS[k].cs===d.cs) q=PEERPOS[k]; }); var loc=q&&q.x!==undefined?fmtDist(dist(S.me,q))+' '+bearing(S.me,q)+' · ±'+Math.round(q.acc)+' m':'No location yet'; return '<div class="mrow"><span class="av" style="background:var(--talk);color:var(--on-talk)">'+esc((d.cs||'??').slice(0,2).toUpperCase())+'</span><span class="who"><b>'+esc(d.cs||'Unnamed device')+'</b><span>'+esc(loc)+'</span></span><span class="r"><span class="pill solid">LIVE</span></span></div>'; }).join(''));
     if(S.agencies.length) h.push('<div class="kick">JOINED BY QR · '+esc(S.agencies[0].agency.toUpperCase())+'</div>'+S.agencies.map(function(a){ return '<button class="mrow" data-ag="'+a.id+'"><span class="av" style="background:var(--warn);color:#0B0D0C;border-radius:10px">'+a.init+'</span><span class="who"><b>'+esc(a.name)+'</b><span>'+esc(a.role)+'</span></span><span class="r"><span>'+fmtDist(dist(S.me,a))+' '+bearing(S.me,a)+'</span></span></button>'; }).join(''));
     if(S.role==='lead'){ var ok=S.team.filter(function(m){return m.roll&&m.roll!=='esc'&&m.roll!=='wait';}).length;
       h.push('<div class="lead"><div class="kick">'+esc(P.rollLong)+'</div><div class="big mono">'+(S.roll==='idle'?'— / '+S.team.length:ok+' / '+S.team.length+' OK')+'</div><button class="primary'+(S.roll==='running'?'':' hot')+'" data-act="roll" '+(S.roll==='running'?'disabled style="opacity:.55"':'')+'>'+(S.roll==='running'?'Waiting for replies…':(S.roll==='done'?'Run '+P.rollName+' again':'Run '+P.rollName))+'</button></div>'); }
@@ -1966,7 +1996,7 @@ setInterval(function(){
   });
   S.drones.forEach(function(d){ d.a+=0.06; d.x=d.cx+Math.cos(d.a)*d.r; d.y=d.cy+Math.sin(d.a)*d.r; });
   var t=curTask();
-  if(t&&t.st==='enroute'&&!S.egress){
+  if(t&&t.st==='enroute'&&!S.egress&&!GPS.on){
     var dx=t.x-S.me.x,dy=t.y-S.me.y,d=Math.hypot(dx,dy);
     if(d>1){ S.me.x+=dx/d*Math.min(9,d); S.me.y+=dy/d*Math.min(9,d); S.me.h=Math.atan2(dx,-dy)*180/Math.PI; S.lastMove=Date.now(); }
     if(dist(S.me,t)<25&&!t._near){ t._near=true; haptic([40,40,40],'ARRIVED'); edge(); toast('You are at '+t.title,'Tap Arrived to confirm'); }
@@ -2136,7 +2166,7 @@ function tickEgress(){
   if(Math.abs(rel)>100) turn=rel<0?'Turn left':'Turn right';
   if(turn!==E.lastTurn&&turn!=='Straight on'){ haptic(rel<0?[120]:[60,60,60],turn.toUpperCase()); sfx('tick'); }
   E.lastTurn=turn;
-  var step=Math.min(10,d); if(d>0.5){ S.me.x+=dx/d*step; S.me.y+=dy/d*step; S.me.h=hdg; S.lastMove=Date.now(); }
+  var step=Math.min(10,d); if(d>0.5&&!GPS.on){ S.me.x+=dx/d*step; S.me.y+=dy/d*step; S.me.h=hdg; S.lastMove=Date.now(); }
   if(d<=10) E.i++;
   if(S.me.floor>0&&Math.random()<0.25) S.me.floor--;
   var rem=d; for(var k=E.i;k<E.path.length-1;k++) rem+=Math.hypot(E.path[k+1][0]-E.path[k][0],E.path[k+1][1]-E.path[k][1]);
@@ -2394,6 +2424,7 @@ function netSend(topic,data){
 }
 function netRecv(topic,data){
   if(!data||typeof data!=='object') return;
+  if(topic==='vpos') return onPos(data);
   if(topic==='vmeta') onMeta(data); else if(topic==='vchunk') onChunk(data); else if(topic==='vmiss') onMiss(data); else if(topic==='vack') onAck(data); else if(topic==='vtalk') onTalk(data);
 }
 function refreshLive(){
@@ -2558,6 +2589,66 @@ $('iCopyLink').onclick=function(){ copyText(shareLink(),'Invite link copied'); }
 $('iCopyAll').onclick=function(){ copyText('Join '+(ORG.name||'our team')+' on Fieldlink: '+shareLink()+'\nAccess code: '+(ORG.code||'none'),'Link and code copied'); };
 $('signOut').onclick=function(){ try{ localStorage.removeItem('fl_org'); }catch(e){} if(NET.p2p){ try{ NET.p2p.room.leave(); }catch(e){} } location.href=location.pathname; };
 
+/* ---------- REAL MAP (MapLibre + OpenFreeMap) and live GPS ---------- */
+var REAL=false, MAP=null, ANCHOR=null, GPS={on:false,fix:false,lat:0,lon:0,acc:0}, PEERPOS={};
+var DEFAULT_CENTER={lat:25.2048,lon:55.2708};
+function mPerDegLon(lat){ return 111320*Math.cos(lat*Math.PI/180); }
+function toWorld(lat,lon){ var a=ANCHOR||DEFAULT_CENTER; return {x:760+(lon-a.lon)*mPerDegLon(a.lat)/M_PER_PX, y:960-(lat-a.lat)*110540/M_PER_PX}; }
+function toGeo(x,y){ var a=ANCHOR||DEFAULT_CENTER; return {lon:a.lon+(x-760)*M_PER_PX/mPerDegLon(a.lat), lat:a.lat-(y-960)*M_PER_PX/110540}; }
+function syncView(){ if(!MAP) return; var a=toGeo(760,960), b=toGeo(960,960), p0=MAP.project([a.lon,a.lat]), p1=MAP.project([b.lon,b.lat]); var sc=(p1.x-p0.x)/200; if(!(sc>0)) return; view.s=sc; view.tx=p0.x-760*sc; view.ty=p0.y-960*sc; applyView(); drawDyn(); }
+var _centerOn=centerOn, _zoomAt=zoomAt;
+centerOn=function(x,y,anim){ if(!REAL||!MAP) return _centerOn(x,y,anim); var g=toGeo(x,y); var pad={top:0,left:0,right:0,bottom:S.compose?$('compose').offsetHeight:peekH()}; if(anim) MAP.easeTo({center:[g.lon,g.lat],padding:pad,duration:450}); else MAP.jumpTo({center:[g.lon,g.lat],padding:pad}); };
+zoomAt=function(f,cx,cy){ if(!REAL||!MAP) return _zoomAt(f,cx,cy); MAP.easeTo({zoom:MAP.getZoom()+Math.log2(f),around:MAP.unproject([cx,cy]),duration:200}); };
+function loadMapLib(){ return new Promise(function(res,rej){ if(window.maplibregl) return res(); var sc=document.createElement('script'); sc.src='vendor/maplibre-gl.js'; sc.onload=function(){ res(); }; sc.onerror=rej; document.head.appendChild(sc); }); }
+function enableReal(){
+  if(REAL) return; loadMapLib().then(function(){
+    REAL=true; phone.classList.add('realmap'); S.layers.drones=false;
+    if(SIM_OFF){ S.tasks=[]; S.cur=null; S.reports=[]; S.zones=S.zones.filter(function(z){ return z.id!=='z0'; }); }
+    var c=ANCHOR||DEFAULT_CENTER;
+    MAP=new maplibregl.Map({container:'gl',style:'https://tiles.openfreemap.org/styles/dark',center:[c.lon,c.lat],zoom:17,attributionControl:false,dragRotate:false,pitchWithRotate:false,maxPitch:0});
+    MAP.touchZoomRotate.disableRotation(); MAP.keyboard.disableRotation();
+    MAP.addControl(new maplibregl.AttributionControl({compact:true}),'top-left');
+    MAP.on('move',syncView); MAP.on('resize',syncView);
+    MAP.on('dragstart',function(){ if(S.follow&&!S.compose) setFollow(false); });
+    MAP.on('load',function(){ syncView(); centerOn(S.me.x,S.me.y,false); });
+    MAP.on('error',function(ev){ if(!MAP._errShown&&ev&&ev.error&&/style|Failed to fetch|NetworkError/i.test(String(ev.error.message||''))){ MAP._errShown=true; gpsNote('Street map could not load (offline or blocked network). Positions still update.'); } });
+    syncView(); renderAll(); startGPS();
+  }).catch(function(){ toast('Map library failed to load','Showing the simulated map instead'); });
+}
+function gpsNote(t,btn){ var n=$('gpsNote'); if(!t){ n.classList.remove('on'); return; } n.innerHTML=esc(t)+(btn?' <button type="button" id="gpsRetry">'+esc(btn)+'</button>':''); n.classList.add('on'); var r=$('gpsRetry'); if(r) r.onclick=function(){ gpsNote(''); startGPS(true); }; }
+var lastPosSent=0;
+function startGPS(retry){
+  if(!navigator.geolocation){ gpsNote('This browser has no location. You appear at a demo position.'); return; }
+  if(GPS.watch&&!retry) return; if(GPS.watch) navigator.geolocation.clearWatch(GPS.watch);
+  GPS.watch=navigator.geolocation.watchPosition(function(p){
+    var c=p.coords; GPS.on=true; GPS.lat=c.latitude; GPS.lon=c.longitude; GPS.acc=c.accuracy||0;
+    if(!ANCHOR){ ANCHOR={lat:c.latitude,lon:c.longitude}; }
+    var w=toWorld(c.latitude,c.longitude); S.me.x=w.x; S.me.y=w.y;
+    if(c.heading!=null&&!isNaN(c.heading)&&(c.speed||0)>0.6) S.me.h=c.heading;
+    if(!GPS.fix){ GPS.fix=true; gpsNote(''); setFollow(true); if(MAP) centerOn(S.me.x,S.me.y,false); toast('Live location on','±'+Math.round(GPS.acc)+' m · shared with your organization only'); }
+    S.lastMove=Date.now();
+    if(S.follow&&!S.compose&&MAP) centerOn(S.me.x,S.me.y,false);
+    if(Date.now()-lastPosSent>2500){ lastPosSent=Date.now(); sendPos(); }
+    placeMarkers(); drawDyn();
+  },function(err){ GPS.on=false; gpsNote(err&&err.code===1?'Location is blocked. Allow location for this site to show your real position.':'Waiting for a GPS fix…',err&&err.code===1?'Try again':null); },{enableHighAccuracy:true,maximumAge:2000,timeout:20000});
+}
+function fitAll(){ if(!MAP) return; var pts=[]; if(GPS.fix) pts.push([GPS.lon,GPS.lat]); Object.keys(PEERPOS).forEach(function(k){ var q=PEERPOS[k]; if(Date.now()-q.rt<600000) pts.push([q.lon,q.lat]); }); if(pts.length<2) return;
+  var lo=[180,90],hi=[-180,-90]; pts.forEach(function(p){ lo=[Math.min(lo[0],p[0]),Math.min(lo[1],p[1])]; hi=[Math.max(hi[0],p[0]),Math.max(hi[1],p[1])]; });
+  setFollow(false); MAP.fitBounds([lo,hi],{padding:{top:140,bottom:peekH()+70,left:70,right:70},maxZoom:18,duration:700}); }
+function sendPos(){ if(!GPS.fix||NET.mode==='none') return; netSend('vpos',{id:NET.self,cs:CS,lat:+GPS.lat.toFixed(6),lon:+GPS.lon.toFixed(6),acc:Math.round(GPS.acc),h:Math.round(S.me.h||0)}); }
+setInterval(function(){ if(GPS.fix) sendPos(); },5000);
+function onPos(d){
+  if(typeof d.id!=='string'||d.id===NET.self||typeof d.lat!=='number'||typeof d.lon!=='number'||Math.abs(d.lat)>90||Math.abs(d.lon)>180) return;
+  var first=!PEERPOS[d.id]; PEERPOS[d.id]={lat:d.lat,lon:d.lon,acc:+d.acc||0,cs:String(d.cs||'').slice(0,24),rt:Date.now()};
+  if(!ANCHOR&&!GPS.fix){ ANCHOR={lat:d.lat,lon:d.lon}; if(MAP) centerOn(760,960,false); }
+  if(first){ var w=toWorld(d.lat,d.lon); toast(PEERPOS[d.id].cs+' is on the map',fmtDist(dist(S.me,w))+' '+bearing(S.me,w)); fitAll(); }
+  placeMarkers();
+}
+/* heading from the compass when the phone is still (Android absolute, iOS after permission) */
+window.addEventListener('deviceorientationabsolute',function(e){ if(e.alpha!=null&&GPS.on) S.me.h=(360-e.alpha)%360; },true);
+window.addEventListener('deviceorientation',function(e){ if(e.webkitCompassHeading!=null&&GPS.on) S.me.h=e.webkitCompassHeading; },true);
+document.addEventListener('click',function askCompass(){ document.removeEventListener('click',askCompass); try{ if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission) DeviceOrientationEvent.requestPermission().catch(function(){}); }catch(e){} },{once:true});
+
 /* ---------- SIGN-IN GATE ---------- */
 var GATE={role:'member',pack:'fire'};
 function rid(n,abc){ var a=abc||'abcdefghjkmnpqrstuvwxyz23456789', o='', r=new Uint32Array(n); try{ crypto.getRandomValues(r); }catch(e){ for(var i=0;i<n;i++) r[i]=Math.random()*1e9; } for(var j=0;j<n;j++) o+=a[r[j]%a.length]; return o; }
@@ -2574,7 +2665,7 @@ function enterOrg(o,role,pack,created){
   SIM_OFF=true; try{ localStorage.setItem('fl_sim','off'); }catch(e){}
   reset(pack||S.pack,true); S.role=role; setSheet('peek'); renderAll(); setFollow(true); centerOn(S.me.x,S.me.y,false); timeline.forEach(clearTimeout); timeline=[];
   if(history.replaceState){ try{ history.replaceState(null,'',location.pathname+'?org='+o.id+location.hash); }catch(e){} }
-  p2pNet(); renderOrg(); sfx('ok');
+  p2pNet(); renderOrg(); sfx('ok'); enableReal();
   if(created){ setTimeout(function(){ $('teamShare').onclick(); },500); toast('Organization created','Invite your team with the link and access code'); }
   else toast('Signed in to '+(o.name||o.id),'Looking for other devices…');
 }
@@ -2595,7 +2686,7 @@ buildWave($('pttWave'),14); buildWave($('flWave'),12); buildTape();
 reset('fire'); drawWorld(); renderAll(); setSheet('peek'); centerOn(S.me.x,S.me.y-30,false); schedule(); $('windc').classList.add('on');
 ORG=loadOrg();
 (function(){ var q=new URLSearchParams(location.search), inv=normId(q.get('org')||q.get('team')||'');
-  if(ORG&&(!inv||inv===ORG.id)){ CS=ORG.cs||CS; setupNet(); renderOrg(); }
+  if(ORG&&(!inv||inv===ORG.id)){ CS=ORG.cs||CS; setupNet(); renderOrg(); setTimeout(enableReal,50); }
   else if(location.hash==='#tour'||location.hash==='#command'){ ORG=null; renderOrg(); }
   else { if(inv&&ORG&&inv!==ORG.id) ORG=null; timeline.forEach(clearTimeout); timeline=[]; showGate(); }
 })();
